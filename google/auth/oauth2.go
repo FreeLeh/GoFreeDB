@@ -34,7 +34,7 @@ func (o *OAuth2) HTTPClient() *http.Client {
 	return o.googleAuthClient
 }
 
-func NewOAuth2(secretFilePath string, credsFilePath string, scopes Scopes, config OAuth2Config) (*OAuth2, error) {
+func NewOAuth2FromFile(secretFilePath string, credsFilePath string, scopes Scopes, config OAuth2Config) (*OAuth2, error) {
 	rawAuthConfig, err := ioutil.ReadFile(secretFilePath)
 	if err != nil {
 		return nil, err

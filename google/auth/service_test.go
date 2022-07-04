@@ -11,7 +11,7 @@ import (
 func TestService_CheckWrappedTransport(t *testing.T) {
 	path := fixtures.PathToFixture("service_account.json")
 
-	service, err := NewService(path, []string{}, ServiceConfig{})
+	service, err := NewServiceFromFile(path, []string{}, ServiceConfig{})
 	assert.Nil(t, err, "should not have any error instantiating the service account wrapper")
 
 	_, ok := service.googleAuthClient.Transport.(*oauth2.Transport)

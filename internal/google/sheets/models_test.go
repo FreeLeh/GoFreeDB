@@ -61,3 +61,59 @@ func TestA1Range(t *testing.T) {
 		})
 	}
 }
+
+func TestRawQueryRowsResult_toQueryRowsResult(t *testing.T) {
+	t.Run("empty_rows", func(t *testing.T) {
+		r := rawQueryRowsResult{
+			Table: rawQueryRowsResultTable{
+				Cols: []rawQueryRowsResultColumn{
+					{ID: "A", Type: "number"},
+					{ID: "B", Type: "string"},
+				},
+				Rows: []rawQueryRowsResultRow{},
+			},
+		}
+
+		expected := QueryRowsResult{Rows: make([][]interface{}, 0)}
+
+		result, err := r.toQueryRowsResult()
+		assert.Nil(t, err)
+		assert.Equal(t, expected, result)
+	})
+
+	t.Run("few_rows", func(t *testing.T) {
+		r := rawQueryRowsResult{
+			Table: rawQueryRowsResultTable{
+				Cols: []rawQueryRowsResultColumn{
+					{ID: "A", Type: "number"},
+					{ID: "B", Type: "string"},
+				},
+				Rows: []rawQueryRowsResultRow{
+					{
+						[]rawQueryRowsResultCell{
+							{Value: 123, Raw: "123"},
+							{Value: "blah", Raw: "blah"},
+						},
+					},
+					{
+						[]rawQueryRowsResultCell{
+							{Value: 456, Raw: "456"},
+							{Value: "blah2", Raw: "blah2"},
+						},
+					},
+				},
+			},
+		}
+
+		expected := QueryRowsResult{
+			Rows: [][]interface{}{
+				{int64(123), "blah"},
+				{int64(456), "blah2"},
+			},
+		}
+
+		result, err := r.toQueryRowsResult()
+		assert.Nil(t, err)
+		assert.Equal(t, expected, result)
+	})
+}

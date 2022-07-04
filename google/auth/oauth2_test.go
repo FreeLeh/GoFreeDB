@@ -15,7 +15,7 @@ func TestNewOAuth2_CheckWrappedTransport_WithStoredCredentials(t *testing.T) {
 	secretPath := fixtures.PathToFixture("client_secret.json")
 	credsPath := fixtures.PathToFixture("stored_credentials.json")
 
-	auth, err := NewOAuth2(secretPath, credsPath, []string{}, OAuth2Config{})
+	auth, err := NewOAuth2FromFile(secretPath, credsPath, []string{}, OAuth2Config{})
 	assert.Nil(t, err, "should not have any error instantiating the OAuth2 wrapper")
 
 	_, ok := auth.googleAuthClient.Transport.(*oauth2.Transport)

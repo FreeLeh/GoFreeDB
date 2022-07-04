@@ -19,10 +19,7 @@ func (s *Service) HTTPClient() *http.Client {
 	return s.googleAuthClient
 }
 
-// TODO(EDWIN): need to document the fact that the service account is just an account.
-// The client must make sure that the account has access to the Google Sheet.
-// We may want to consider to have a hint printed in case ths this happens.
-func NewService(filePath string, scopes Scopes, config ServiceConfig) (*Service, error) {
+func NewServiceFromFile(filePath string, scopes Scopes, config ServiceConfig) (*Service, error) {
 	authConfig, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return nil, err

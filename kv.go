@@ -4,28 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/FreeLeh/GoFreeLeh/internal/google/sheets"
 )
 
-type GoogleSheetKVConfig struct {
+type GoogleSheetKVStoreConfig struct {
 	Mode  KVMode
 	codec Codec
-}
-
-type Codec interface {
-	Encode(value []byte) (string, error)
-	Decode(value string) ([]byte, error)
-}
-
-type Sheets interface {
-	CreateSpreadsheet(ctx context.Context, title string) (string, error)
-	CreateSheet(ctx context.Context, spreadsheetID string, sheetName string) error
-	InsertRows(ctx context.Context, spreadsheetID string, a1Range string, values [][]interface{}) (sheets.InsertRowsResult, error)
-	OverwriteRows(ctx context.Context, spreadsheetID string, a1Range string, values [][]interface{}) (sheets.InsertRowsResult, error)
-	UpdateRows(ctx context.Context, spreadsheetID string, a1Range string, values [][]interface{}) (sheets.UpdateRowsResult, error)
-	Clear(ctx context.Context, spreadsheetID string, ranges []string) ([]string, error)
 }
 
 /*
@@ -76,25 +61,25 @@ The logic for Get() is just a simple VLOOKUP without any sorting involved (unlik
 Here we assume there cannot be any race condition that leads to two rows with the same key.
 
 */
-type GoogleSheetKV struct {
-	wrapper             Sheets
+type GoogleSheetKVStore struct {
+	wrapper             sheetsWrapper
 	spreadsheetID       string
 	sheetName           string
 	scratchpadSheetName string
 	scratchpadLocation  sheets.A1Range
-	config              GoogleSheetKVConfig
+	config              GoogleSheetKVStoreConfig
 }
 
-func (kv *GoogleSheetKV) Get(ctx context.Context, key string) ([]byte, error) {
-	query := fmt.Sprintf(getDefaultQueryTemplate, key, getA1Range(kv.sheetName, defaultTableRange))
-	if kv.config.Mode == KVModeAppendOnly {
-		query = fmt.Sprintf(getAppendQueryTemplate, key, getA1Range(kv.sheetName, defaultTableRange))
+func (s *GoogleSheetKVStore) Get(ctx context.Context, key string) ([]byte, error) {
+	query := fmt.Sprintf(kvGetDefaultQueryTemplate, key, getA1Range(s.sheetName, defaultKVTableRange))
+	if s.config.Mode == KVModeAppendOnly {
+		query = fmt.Sprintf(kvGetAppendQueryTemplate, key, getA1Range(s.sheetName, defaultKVTableRange))
 	}
 
-	result, err := kv.wrapper.UpdateRows(
+	result, err := s.wrapper.UpdateRows(
 		ctx,
-		kv.spreadsheetID,
-		kv.scratchpadLocation.Original,
+		s.spreadsheetID,
+		s.scratchpadLocation.Original,
 		[][]interface{}{{query}},
 	)
 	if err != nil {
@@ -108,37 +93,37 @@ func (kv *GoogleSheetKV) Get(ctx context.Context, key string) ([]byte, error) {
 	if value == naValue || value == "" {
 		return nil, fmt.Errorf("%w: %s", ErrKeyNotFound, key)
 	}
-	return kv.config.codec.Decode(value.(string))
+	return s.config.codec.Decode(value.(string))
 }
 
-func (kv *GoogleSheetKV) Set(ctx context.Context, key string, value []byte) error {
-	encoded, err := kv.config.codec.Encode(value)
+func (s *GoogleSheetKVStore) Set(ctx context.Context, key string, value []byte) error {
+	encoded, err := s.config.codec.Encode(value)
 	if err != nil {
 		return err
 	}
-	if kv.config.Mode == KVModeAppendOnly {
-		return kv.setAppendOnly(ctx, key, encoded)
+	if s.config.Mode == KVModeAppendOnly {
+		return s.setAppendOnly(ctx, key, encoded)
 	}
-	return kv.setDefault(ctx, key, encoded)
+	return s.setDefault(ctx, key, encoded)
 }
 
-func (kv *GoogleSheetKV) setAppendOnly(ctx context.Context, key string, encoded string) error {
-	_, err := kv.wrapper.InsertRows(
+func (s *GoogleSheetKVStore) setAppendOnly(ctx context.Context, key string, encoded string) error {
+	_, err := s.wrapper.InsertRows(
 		ctx,
-		kv.spreadsheetID,
-		getA1Range(kv.sheetName, defaultTableRange),
+		s.spreadsheetID,
+		getA1Range(s.sheetName, defaultKVTableRange),
 		[][]interface{}{{key, encoded, currentTimeMs()}},
 	)
 	return err
 }
 
-func (kv *GoogleSheetKV) setDefault(ctx context.Context, key string, encoded string) error {
-	a1Range, err := kv.findKeyA1Range(ctx, key)
+func (s *GoogleSheetKVStore) setDefault(ctx context.Context, key string, encoded string) error {
+	a1Range, err := s.findKeyA1Range(ctx, key)
 	if errors.Is(err, ErrKeyNotFound) {
-		_, err := kv.wrapper.OverwriteRows(
+		_, err := s.wrapper.OverwriteRows(
 			ctx,
-			kv.spreadsheetID,
-			getA1Range(kv.sheetName, defaultTableRange),
+			s.spreadsheetID,
+			getA1Range(s.sheetName, defaultKVFirstRowRange),
 			[][]interface{}{{key, encoded, currentTimeMs()}},
 		)
 		return err
@@ -148,21 +133,21 @@ func (kv *GoogleSheetKV) setDefault(ctx context.Context, key string, encoded str
 		return err
 	}
 
-	_, err = kv.wrapper.UpdateRows(
+	_, err = s.wrapper.UpdateRows(
 		ctx,
-		kv.spreadsheetID,
+		s.spreadsheetID,
 		a1Range.Original,
 		[][]interface{}{{key, encoded, currentTimeMs()}},
 	)
 	return err
 }
 
-func (kv *GoogleSheetKV) findKeyA1Range(ctx context.Context, key string) (sheets.A1Range, error) {
-	result, err := kv.wrapper.UpdateRows(
+func (s *GoogleSheetKVStore) findKeyA1Range(ctx context.Context, key string) (sheets.A1Range, error) {
+	result, err := s.wrapper.UpdateRows(
 		ctx,
-		kv.spreadsheetID,
-		kv.scratchpadLocation.Original,
-		[][]interface{}{{fmt.Sprintf(findKeyA1RangeQueryTemplate, key, getA1Range(kv.sheetName, defaultKeyColRange))}},
+		s.spreadsheetID,
+		s.scratchpadLocation.Original,
+		[][]interface{}{{fmt.Sprintf(kvFindKeyA1RangeQueryTemplate, key, getA1Range(s.sheetName, defaultKVKeyColRange))}},
 	)
 	if err != nil {
 		return sheets.A1Range{}, err
@@ -171,7 +156,7 @@ func (kv *GoogleSheetKV) findKeyA1Range(ctx context.Context, key string) (sheets
 		return sheets.A1Range{}, fmt.Errorf("%w: %s", ErrKeyNotFound, key)
 	}
 
-	offset := result.UpdatedValues[0][0]
+	offset := result.UpdatedValues[0][0].(string)
 	if offset == naValue || offset == "" {
 		return sheets.A1Range{}, fmt.Errorf("%w: %s", ErrKeyNotFound, key)
 	}
@@ -180,23 +165,23 @@ func (kv *GoogleSheetKV) findKeyA1Range(ctx context.Context, key string) (sheets
 	// Here we need to return the full range where the key is found.
 	// Hence, we need to get the row offset first, and assume that each row has only 3 rows: A B C.
 	// Otherwise, the DELETE() function will not work properly (we need to clear the full row, not just the key cell).
-	a1Range := getA1Range(kv.sheetName, fmt.Sprintf("A%s:C%s", offset, offset))
+	a1Range := getA1Range(s.sheetName, fmt.Sprintf("A%s:C%s", offset, offset))
 	return sheets.NewA1Range(a1Range), nil
 }
 
-func (kv *GoogleSheetKV) Delete(ctx context.Context, key string) error {
-	if kv.config.Mode == KVModeAppendOnly {
-		return kv.deleteAppendOnly(ctx, key)
+func (s *GoogleSheetKVStore) Delete(ctx context.Context, key string) error {
+	if s.config.Mode == KVModeAppendOnly {
+		return s.deleteAppendOnly(ctx, key)
 	}
-	return kv.deleteDefault(ctx, key)
+	return s.deleteDefault(ctx, key)
 }
 
-func (kv *GoogleSheetKV) deleteAppendOnly(ctx context.Context, key string) error {
-	return kv.setAppendOnly(ctx, key, "")
+func (s *GoogleSheetKVStore) deleteAppendOnly(ctx context.Context, key string) error {
+	return s.setAppendOnly(ctx, key, "")
 }
 
-func (kv *GoogleSheetKV) deleteDefault(ctx context.Context, key string) error {
-	a1Range, err := kv.findKeyA1Range(ctx, key)
+func (s *GoogleSheetKVStore) deleteDefault(ctx context.Context, key string) error {
+	a1Range, err := s.findKeyA1Range(ctx, key)
 	if errors.Is(err, ErrKeyNotFound) {
 		return nil
 	}
@@ -204,56 +189,30 @@ func (kv *GoogleSheetKV) deleteDefault(ctx context.Context, key string) error {
 		return err
 	}
 
-	_, err = kv.wrapper.Clear(ctx, kv.spreadsheetID, []string{a1Range.Original})
+	_, err = s.wrapper.Clear(ctx, s.spreadsheetID, []string{a1Range.Original})
 	return err
 }
 
-func (kv *GoogleSheetKV) findScratchpadLocation() error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
-	defer cancel()
-
-	result, err := kv.wrapper.OverwriteRows(
-		ctx,
-		kv.spreadsheetID,
-		kv.scratchpadSheetName+"!"+defaultTableRange,
-		[][]interface{}{{scratchpadBooked}},
-	)
-	if err != nil {
-		return err
-	}
-
-	kv.scratchpadLocation = result.UpdatedRange
-	return nil
-}
-
-func (kv *GoogleSheetKV) ensureSheets() {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
-	defer cancel()
-
-	kv.wrapper.CreateSheet(ctx, kv.spreadsheetID, kv.sheetName)
-	kv.wrapper.CreateSheet(ctx, kv.spreadsheetID, kv.scratchpadSheetName)
-}
-
-func (kv *GoogleSheetKV) Close(ctx context.Context) error {
-	_, err := kv.wrapper.Clear(ctx, kv.spreadsheetID, []string{kv.scratchpadLocation.Original})
+func (s *GoogleSheetKVStore) Close(ctx context.Context) error {
+	_, err := s.wrapper.Clear(ctx, s.spreadsheetID, []string{s.scratchpadLocation.Original})
 	return err
 }
 
-func NewGoogleSheetKeyValue(
+func NewGoogleSheetKVStore(
 	auth sheets.AuthClient,
 	spreadsheetID string,
 	sheetName string,
-	config GoogleSheetKVConfig,
-) *GoogleSheetKV {
+	config GoogleSheetKVStoreConfig,
+) *GoogleSheetKVStore {
 	wrapper, err := sheets.NewWrapper(auth)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("error creating sheets wrapper: %w", err))
 	}
 
 	scratchpadSheetName := sheetName + scratchpadSheetNameSuffix
-	config = applyConfig(config)
+	config = applyGoogleSheetKVStoreConfig(config)
 
-	kv := &GoogleSheetKV{
+	store := &GoogleSheetKVStore{
 		wrapper:             wrapper,
 		spreadsheetID:       spreadsheetID,
 		sheetName:           sheetName,
@@ -261,14 +220,19 @@ func NewGoogleSheetKeyValue(
 		config:              config,
 	}
 
-	kv.ensureSheets()
-	if err := kv.findScratchpadLocation(); err != nil {
-		panic(err)
+	_ = ensureSheets(store.wrapper, store.spreadsheetID, store.sheetName)
+	_ = ensureSheets(store.wrapper, store.spreadsheetID, store.scratchpadSheetName)
+
+	scratchpadLocation, err := findScratchpadLocation(store.wrapper, store.spreadsheetID, store.scratchpadSheetName)
+	if err != nil {
+		panic(fmt.Errorf("error finding a scratchpad location in sheet %s: %w", store.scratchpadSheetName, err))
 	}
-	return kv
+	store.scratchpadLocation = scratchpadLocation
+
+	return store
 }
 
-func applyConfig(config GoogleSheetKVConfig) GoogleSheetKVConfig {
+func applyGoogleSheetKVStoreConfig(config GoogleSheetKVStoreConfig) GoogleSheetKVStoreConfig {
 	config.codec = &BasicCodec{}
 	return config
 }
