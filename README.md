@@ -1,5 +1,7 @@
 # GoFreeLeh
 
+![Unit Test](https://github.com/FreeLeh/GoFreeLeh/actions/workflows/unit_test.yml/badge.svg)
+
 <div>
     <h2 align="center">
         Excited to start your personal project, but too lazy to setup your server, database, KV store, etc.?

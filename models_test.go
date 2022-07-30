@@ -10,7 +10,7 @@ func getIntegrationTestInfo() (string, string, bool) {
 	spreadsheetID := os.Getenv("INTEGRATION_TEST_SPREADSHEET_ID")
 	authJSON := os.Getenv("INTEGRATION_TEST_AUTH_JSON")
 	_, isGithubActions := os.LookupEnv("GITHUB_ACTIONS")
-	return spreadsheetID, authJSON, isGithubActions
+	return spreadsheetID, authJSON, isGithubActions && spreadsheetID != "" && authJSON != ""
 }
 
 func deleteSheet(t *testing.T, wrapper sheetsWrapper, spreadsheetID string, sheetNames []string) {
