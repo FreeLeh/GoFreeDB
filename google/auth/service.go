@@ -24,8 +24,11 @@ func NewServiceFromFile(filePath string, scopes Scopes, config ServiceConfig) (*
 	if err != nil {
 		return nil, err
 	}
+	return NewServiceFromJSON(authConfig, scopes, config)
+}
 
-	c, err := google.JWTConfigFromJSON(authConfig, scopes...)
+func NewServiceFromJSON(raw []byte, scopes Scopes, config ServiceConfig) (*Service, error) {
+	c, err := google.JWTConfigFromJSON(raw, scopes...)
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ package sheets
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -40,6 +41,39 @@ func (w *Wrapper) CreateSheet(ctx context.Context, spreadsheetID string, sheetNa
 	requests := []*sheets.Request{
 		{AddSheet: addSheetReq},
 	}
+	batchUpdateSpreadsheetReq := w.service.Spreadsheets.BatchUpdate(
+		spreadsheetID,
+		&sheets.BatchUpdateSpreadsheetRequest{Requests: requests},
+	).Context(ctx)
+
+	_, err := batchUpdateSpreadsheetReq.Do()
+	return err
+}
+
+func (w *Wrapper) GetSheetNameToID(ctx context.Context, spreadsheetID string) (map[string]int64, error) {
+	resp, err := w.service.Spreadsheets.Get(spreadsheetID).Context(ctx).Do()
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]int64)
+	for _, sheet := range resp.Sheets {
+		if sheet.Properties == nil {
+			return nil, errors.New("failed getSheetIDByName due to empty sheet properties")
+		}
+		result[sheet.Properties.Title] = sheet.Properties.SheetId
+	}
+
+	return result, nil
+}
+
+func (w *Wrapper) DeleteSheets(ctx context.Context, spreadsheetID string, sheetIDs []int64) error {
+	requests := make([]*sheets.Request, 0, len(sheetIDs))
+	for _, sheetID := range sheetIDs {
+		deleteSheetReq := &sheets.DeleteSheetRequest{SheetId: sheetID}
+		requests = append(requests, &sheets.Request{DeleteSheet: deleteSheetReq})
+	}
+
 	batchUpdateSpreadsheetReq := w.service.Spreadsheets.BatchUpdate(
 		spreadsheetID,
 		&sheets.BatchUpdateSpreadsheetRequest{Requests: requests},

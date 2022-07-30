@@ -61,7 +61,9 @@ type Codec interface {
 
 type sheetsWrapper interface {
 	CreateSpreadsheet(ctx context.Context, title string) (string, error)
+	GetSheetNameToID(ctx context.Context, spreadsheetID string) (map[string]int64, error)
 	CreateSheet(ctx context.Context, spreadsheetID string, sheetName string) error
+	DeleteSheets(ctx context.Context, spreadsheetID string, sheetIDs []int64) error
 	InsertRows(ctx context.Context, spreadsheetID string, a1Range string, values [][]interface{}) (sheets.InsertRowsResult, error)
 	OverwriteRows(ctx context.Context, spreadsheetID string, a1Range string, values [][]interface{}) (sheets.InsertRowsResult, error)
 	UpdateRows(ctx context.Context, spreadsheetID string, a1Range string, values [][]interface{}) (sheets.UpdateRowsResult, error)

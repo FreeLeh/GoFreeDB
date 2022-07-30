@@ -31,6 +31,14 @@ func (w *MockWrapper) CreateSpreadsheet(ctx context.Context, title string) (stri
 	return w.CreateSpreadsheetResult, w.CreateSpreadsheetError
 }
 
+func (w *MockWrapper) GetSheetNameToID(ctx context.Context, spreadsheetID string) (map[string]int64, error) {
+	return nil, nil
+}
+
+func (w *MockWrapper) DeleteSheets(ctx context.Context, spreadsheetID string, sheetIDs []int64) error {
+	return nil
+}
+
 func (w *MockWrapper) CreateSheet(ctx context.Context, spreadsheetID string, sheetName string) error {
 	return w.CreateSheetError
 }
