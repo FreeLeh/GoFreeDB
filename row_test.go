@@ -15,7 +15,7 @@ type testPerson struct {
 	DOB  string `json:"dob"`
 }
 
-func TestGoogleSheetRowStore(t *testing.T) {
+func TestGoogleSheetRowStore_Integration(t *testing.T) {
 	spreadsheetID, authJSON, shouldRun := getIntegrationTestInfo()
 	if !shouldRun {
 		t.Skip("integration test should be run only in GitHub Actions")

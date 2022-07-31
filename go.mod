@@ -3,6 +3,7 @@ module github.com/FreeLeh/GoFreeLeh
 go 1.18
 
 require (
+	github.com/mitchellh/mapstructure v1.5.0
 	github.com/stretchr/testify v1.7.5
 	golang.org/x/oauth2 v0.0.0-20220628200809-02e64fa58f26
 	google.golang.org/api v0.86.0
@@ -18,7 +19,6 @@ require (
 	github.com/googleapis/enterprise-certificate-proxy v0.1.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.4.0 // indirect
 	github.com/h2non/parth v0.0.0-20190131123155-b4df798d6542 // indirect
-	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e // indirect

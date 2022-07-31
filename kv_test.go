@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGoogleSheetKVStore_AppendOnly(t *testing.T) {
+func TestGoogleSheetKVStore_AppendOnly_Integration(t *testing.T) {
 	spreadsheetID, authJSON, shouldRun := getIntegrationTestInfo()
 	if !shouldRun {
 		t.Skip("integration test should be run only in GitHub Actions")
@@ -51,7 +51,7 @@ func TestGoogleSheetKVStore_AppendOnly(t *testing.T) {
 	assert.ErrorIs(t, err, ErrKeyNotFound)
 }
 
-func TestNewGoogleSheetKVStore_Default(t *testing.T) {
+func TestNewGoogleSheetKVStore_Default_Integration(t *testing.T) {
 	spreadsheetID, authJSON, shouldRun := getIntegrationTestInfo()
 	if !shouldRun {
 		t.Skip("integration test should be run only in GitHub Actions")
