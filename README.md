@@ -17,7 +17,9 @@
 
 Our main goal is to make developers who want to **just start their small personal projects so much easier without thinking too much about the setup required to get started**. We can leverage a bunch of well known free services available to us like Google Sheets and Telegram. We want to use these services as our **easy-to-setup and "managed" database or even a message queue**.
 
-`GoFreeLeh` is just the beginning. It is very likely we will explore other languages (e.g. Python, Java, Kotlin, Swift, etc.) to support in the future.
+`GoFreeLeh` is just the beginning. It is very likely we will explore other languages (e.g. Java, Kotlin, Swift, etc.) to support in the future.
+
+> Check out [PyFreeLeh](https://github.com/FreeLeh/PyFreeLeh) for the Python version!
 
 ## What kind of interfaces/abstractions can this library provide?
 
@@ -32,7 +34,7 @@ There are other ideas we have in our backlog:
 2. A simple message queue on top of Telegram Channels.
 
 We are quite open to knowing any other free services we can leverage on.<br>
-Please suggest your ideas in the [issues]() page!
+Please suggest your ideas in the [issues](https://github.com/FreeLeh/GoFreeLeh/issues) page!
 
 ## What can I do with these interfaces/abstractions?
 
@@ -53,6 +55,7 @@ Here are a few ideas we thought of:
 
 # Table of Contents
 
+* [Installation](#installation)
 * [Key Value Store](#key-value-store)
     * [Google Sheets Key Value Store](#google-sheets-key-value-store)
         * [Key Value Store Interface](#key-value-store-interface)
@@ -69,7 +72,12 @@ Here are a few ideas we thought of:
 * [Limitations](#limitations)
 * [Disclaimer](#disclaimer)
 * [License](#license)
-    
+
+# Installation
+
+```
+go get github.com/FreeLeh/GoFreeLeh
+```
 
 # Key Value Store
 
