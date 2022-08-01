@@ -62,7 +62,7 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 	}
 	err = db.Select(&out, "name", "age").
 		Where("name = ? OR name = ?", "name2", "name3").
-		OrderBy(map[string]OrderBy{"name": OrderByAsc}).
+		OrderBy([]ColumnOrderBy{{"name", OrderByAsc}}).
 		Limit(2).
 		Exec(context.Background())
 	assert.Nil(t, err)

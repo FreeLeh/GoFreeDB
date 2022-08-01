@@ -327,11 +327,11 @@ store.Select(&result).Where("name = ? AND age = ?", "bob", 12)
 store.Select(&result).Where("name like ? OR age >= ?", "b%", 10) 
 ```
 
-##### `OrderBy(colToOrdering map[string]OrderBy) *googleSheetSelectStmt`
+##### `OrderBy(ordering []ColumnOrderBy) *googleSheetSelectStmt`
 
-- The `colToOrdering` argument decides which column should have what kind of ordering.
+- The `ordering` argument decides which column should have what kind of ordering.
 - The library provides 2 `OrderBy` constants: `OrderByAsc` and `OrderByDesc`.
-- And empty `colToOrdering` map will result in no operation.
+- And empty `ordering` slice will result in no operation.
 - This function will translate into the `ORDER BY` clause as stated in this [Google Sheets Query docs](https://developers.google.com/chart/interactive/docs/querylanguage#order-by).
 - This function returns a reference to the statement for chaining.
 
@@ -339,10 +339,17 @@ Examples:
 
 ```go
 // SELECT * WHERE A = "bob" AND B = 12 ORDER BY A ASC, B DESC
-store.Select(&result).Where("name = ? AND age = ?", "bob", 12).OrderBy(map[string]OrderBy{"name": OrderByAsc, "age": OrderByDesc)
+ordering := []ColumnOrderBy{
+	{Column: "name", OrderBy: OrderByAsc},
+    {Column: "age", OrderBy: OrderByDesc},
+}
+store.Select(&result).Where("name = ? AND age = ?", "bob", 12).OrderBy(ordering)
 
 // SELECT * ORDER BY A ASC
-store.Select(&result).OrderBy(map[string]OrderBy{"name": OrderByAsc})
+ordering := []ColumnOrderBy{
+	{Column: "name", OrderBy: OrderByAsc}
+}
+store.Select(&result).OrderBy(ordering)
 ```
 
 ##### `Limit(limit uint64) *googleSheetSelectStmt`

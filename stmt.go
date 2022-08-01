@@ -30,13 +30,13 @@ func (s *googleSheetSelectStmt) Where(condition string, args ...interface{}) *go
 	return s
 }
 
-func (s *googleSheetSelectStmt) OrderBy(colToOrdering map[string]OrderBy) *googleSheetSelectStmt {
-	orders := make([]string, 0, len(colToOrdering))
-	for col, order := range colToOrdering {
-		orders = append(orders, col+" "+string(order))
+func (s *googleSheetSelectStmt) OrderBy(ordering []ColumnOrderBy) *googleSheetSelectStmt {
+	orderBy := make([]string, 0, len(ordering))
+	for _, o := range ordering {
+		orderBy = append(orderBy, o.Column+" "+string(o.OrderBy))
 	}
 
-	s.orderBy = orders
+	s.orderBy = orderBy
 	return s
 }
 

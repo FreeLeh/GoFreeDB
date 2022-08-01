@@ -76,3 +76,8 @@ type colIdx struct {
 	name string
 	idx  int
 }
+
+type ColumnOrderBy struct {
+	Column  string
+	OrderBy OrderBy
+}

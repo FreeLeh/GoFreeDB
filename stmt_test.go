@@ -97,7 +97,7 @@ func TestGenerateSelect(t *testing.T) {
 			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}},
 		}
 		stmt := newGoogleSheetSelectStmt(store, nil, []string{"col1", "col2"})
-		stmt.OrderBy(map[string]OrderBy{"col1": OrderByDesc, "col2": OrderByAsc})
+		stmt.OrderBy([]ColumnOrderBy{{Column: "col1", OrderBy: OrderByDesc}, {Column: "col2", OrderBy: OrderByAsc}})
 
 		result, err := stmt.generateSelect()
 		assert.Nil(t, err)
