@@ -1,0 +1,33 @@
+name: Integration Test
+on:
+  pull_request_review:
+    types: [submitted]
+
+env:
+  INTEGRATION_TEST_SPREADSHEET_ID: ${{ secrets.INTEGRATION_TEST_SPREADSHEET_ID }}
+  INTEGRATION_TEST_AUTH_JSON: ${{ secrets.INTEGRATION_TEST_AUTH_JSON }}
+
+jobs:
+  integration_test:
+    runs-on: ubuntu-latest
+    environment: integration_test
+    strategy:
+      matrix:
+        go-version: ['1.18.x']
+
+    if: github.event.review.state == 'approved'
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+
+      - name: Golang version
+        run: go version
+
+      - name: Integration Test
+        run: go test -v ./... -count=1 -run="_Integration"
