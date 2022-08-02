@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/FreeLeh/GoFreeLeh/internal/google/sheets"
-	"github.com/mitchellh/mapstructure"
 )
 
 type googleSheetSelectStmt struct {
@@ -72,7 +71,7 @@ func (s *googleSheetSelectStmt) Exec(ctx context.Context) error {
 	}
 
 	m := s.buildQueryResultMap(result)
-	return mapstructure.Decode(m, s.output)
+	return mapstructureDecode(m, s.output)
 }
 
 func (s *googleSheetSelectStmt) ensureOutputSlice() error {
@@ -330,7 +329,7 @@ func (s *googleSheetInsertStmt) convertRowToSlice(row interface{}) ([]interface{
 	}
 
 	var output map[string]interface{}
-	if err := mapstructure.Decode(row, &output); err != nil {
+	if err := mapstructureDecode(row, &output); err != nil {
 		return nil, err
 	}
 

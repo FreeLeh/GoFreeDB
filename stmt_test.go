@@ -10,9 +10,9 @@ import (
 )
 
 type person struct {
-	Name string `mapstructure:"name,omitempty"`
-	Age  int    `mapstructure:"age,omitempty"`
-	DOB  string `mapstructure:"dob,omitempty"`
+	Name string `db:"name,omitempty"`
+	Age  int    `db:"age,omitempty"`
+	DOB  string `db:"dob,omitempty"`
 }
 
 func TestGenerateSelect(t *testing.T) {
@@ -257,7 +257,7 @@ func TestGoogleSheetInsertStmt_convertRowToSlice(t *testing.T) {
 		assert.Nil(t, err)
 
 		type dummy struct {
-			Name string `mapstructure:"name"`
+			Name string `db:"name"`
 		}
 
 		result, err = stmt.convertRowToSlice(dummy{Name: "blah"})

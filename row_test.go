@@ -10,9 +10,9 @@ import (
 )
 
 type testPerson struct {
-	Name string `json:"name" mapstructure:"name"`
-	Age  int    `json:"age" mapstructure:"age"`
-	DOB  string `json:"dob" mapstructure:"dob"`
+	Name string `json:"name" db:"name"`
+	Age  int    `json:"age" db:"age"`
+	DOB  string `json:"dob" db:"dob"`
 }
 
 func TestGoogleSheetRowStore_Integration(t *testing.T) {
