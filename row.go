@@ -49,11 +49,8 @@ func (s *GoogleSheetRowStore) RawInsert(rows ...[]interface{}) *googleSheetRawIn
 // Insert will try to infer what is the type of each row and perform certain logic based on the type.
 // For example, a struct will be converted into a map[string]interface{} and then into []interface{} (following the
 // column mapping ordering).
-//
-// There needs to be a lot of type handling here.
-// TODO(edocsss): implement this
 func (s *GoogleSheetRowStore) Insert(rows ...interface{}) *googleSheetInsertStmt {
-	panic("not implemented yet")
+	return newGoogleSheetInsertStmt(s, rows)
 }
 
 // Update applies the given value for each column into the applicable rows.

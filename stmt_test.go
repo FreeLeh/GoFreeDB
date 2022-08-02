@@ -9,6 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type person struct {
+	Name string `mapstructure:"name,omitempty"`
+	Age  int    `mapstructure:"age,omitempty"`
+	DOB  string `mapstructure:"dob,omitempty"`
+}
+
 func TestGenerateSelect(t *testing.T) {
 	t.Run("successful_basic", func(t *testing.T) {
 		store := &GoogleSheetRowStore{
@@ -155,12 +161,6 @@ func TestSelectStmt_Exec(t *testing.T) {
 	})
 
 	t.Run("successful", func(t *testing.T) {
-		type Person struct {
-			Name string
-			Age  int
-			DOB  string
-		}
-
 		wrapper := &sheets.MockWrapper{QueryRowsResult: sheets.QueryRowsResult{Rows: [][]interface{}{
 			{10, "17-01-2001"},
 			{11, "18-01-2000"},
@@ -172,10 +172,10 @@ func TestSelectStmt_Exec(t *testing.T) {
 				Columns: []string{"name", "age", "dob"},
 			},
 		}
-		var out []Person
+		var out []person
 		stmt := newGoogleSheetSelectStmt(store, &out, []string{"age", "dob"})
 
-		expected := []Person{
+		expected := []person{
 			{Age: 10, DOB: "17-01-2001"},
 			{Age: 11, DOB: "18-01-2000"},
 		}
@@ -186,12 +186,6 @@ func TestSelectStmt_Exec(t *testing.T) {
 	})
 
 	t.Run("successful_select_all", func(t *testing.T) {
-		type Person struct {
-			Name string
-			Age  int
-			DOB  string
-		}
-
 		wrapper := &sheets.MockWrapper{QueryRowsResult: sheets.QueryRowsResult{Rows: [][]interface{}{
 			{"name1", 10, "17-01-2001"},
 			{"name2", 11, "18-01-2000"},
@@ -203,10 +197,10 @@ func TestSelectStmt_Exec(t *testing.T) {
 				Columns: []string{"name", "age", "dob"},
 			},
 		}
-		var out []Person
+		var out []person
 		stmt := newGoogleSheetSelectStmt(store, &out, []string{})
 
-		expected := []Person{
+		expected := []person{
 			{Name: "name1", Age: 10, DOB: "17-01-2001"},
 			{Name: "name2", Age: 11, DOB: "18-01-2000"},
 		}
@@ -214,5 +208,60 @@ func TestSelectStmt_Exec(t *testing.T) {
 
 		assert.Nil(t, err)
 		assert.Equal(t, expected, out)
+	})
+}
+
+func TestGoogleSheetInsertStmt_convertRowToSlice(t *testing.T) {
+	wrapper := &sheets.MockWrapper{}
+	store := &GoogleSheetRowStore{
+		wrapper:     wrapper,
+		colsMapping: map[string]colIdx{"name": {"A", 0}, "age": {"B", 1}, "dob": {"C", 2}},
+		config: GoogleSheetRowStoreConfig{
+			Columns: []string{"name", "age", "dob"},
+		},
+	}
+
+	t.Run("non_struct", func(t *testing.T) {
+		stmt := newGoogleSheetInsertStmt(store, nil)
+
+		result, err := stmt.convertRowToSlice(nil)
+		assert.Nil(t, result)
+		assert.NotNil(t, err)
+
+		result, err = stmt.convertRowToSlice(1)
+		assert.Nil(t, result)
+		assert.NotNil(t, err)
+
+		result, err = stmt.convertRowToSlice("1")
+		assert.Nil(t, result)
+		assert.NotNil(t, err)
+
+		result, err = stmt.convertRowToSlice([]int{1, 2, 3})
+		assert.Nil(t, result)
+		assert.NotNil(t, err)
+	})
+
+	t.Run("struct", func(t *testing.T) {
+		stmt := newGoogleSheetInsertStmt(store, nil)
+
+		result, err := stmt.convertRowToSlice(person{Name: "blah", Age: 10, DOB: "2021"})
+		assert.Equal(t, []interface{}{"blah", 10, "2021"}, result)
+		assert.Nil(t, err)
+
+		result, err = stmt.convertRowToSlice(&person{Name: "blah", Age: 10, DOB: "2021"})
+		assert.Equal(t, []interface{}{"blah", 10, "2021"}, result)
+		assert.Nil(t, err)
+
+		result, err = stmt.convertRowToSlice(person{Name: "blah", DOB: "2021"})
+		assert.Equal(t, []interface{}{"blah", nil, "2021"}, result)
+		assert.Nil(t, err)
+
+		type dummy struct {
+			Name string `mapstructure:"name"`
+		}
+
+		result, err = stmt.convertRowToSlice(dummy{Name: "blah"})
+		assert.Equal(t, []interface{}{"blah", nil, nil}, result)
+		assert.Nil(t, err)
 	})
 }
