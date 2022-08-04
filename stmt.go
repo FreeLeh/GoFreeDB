@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/FreeLeh/GoFreeLeh/internal/google/sheets"
-	"github.com/mitchellh/mapstructure"
 )
 
 type googleSheetSelectStmt struct {
@@ -72,7 +71,7 @@ func (s *googleSheetSelectStmt) Exec(ctx context.Context) error {
 	}
 
 	m := s.buildQueryResultMap(result)
-	return mapstructure.Decode(m, s.output)
+	return mapstructureDecode(m, s.output)
 }
 
 func (s *googleSheetSelectStmt) ensureOutputSlice() error {
@@ -313,6 +312,65 @@ func newGoogleSheetRawInsertStmt(store *GoogleSheetRowStore, rows [][]interface{
 
 type googleSheetInsertStmt struct {
 	store *GoogleSheetRowStore
+	rows  []interface{}
+}
+
+func (s *googleSheetInsertStmt) convertRowToSlice(row interface{}) ([]interface{}, error) {
+	if row == nil {
+		return nil, errors.New("row type must not be nil")
+	}
+
+	t := reflect.TypeOf(row)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return nil, errors.New("row type must be either a struct or a slice")
+	}
+
+	var output map[string]interface{}
+	if err := mapstructureDecode(row, &output); err != nil {
+		return nil, err
+	}
+
+	result := make([]interface{}, len(s.store.colsMapping))
+	for key, value := range output {
+		if colIdx, ok := s.store.colsMapping[key]; ok {
+			result[colIdx.idx] = value
+		}
+	}
+
+	return result, nil
+}
+
+func (s *googleSheetInsertStmt) Exec(ctx context.Context) error {
+	if len(s.rows) == 0 {
+		return nil
+	}
+
+	convertedRows := make([][]interface{}, 0, len(s.rows))
+	for _, row := range s.rows {
+		r, err := s.convertRowToSlice(row)
+		if err != nil {
+			return fmt.Errorf("cannot execute google sheet insert statement due to row conversion error: %w", err)
+		}
+		convertedRows = append(convertedRows, r)
+	}
+
+	_, err := s.store.wrapper.OverwriteRows(
+		ctx,
+		s.store.spreadsheetID,
+		getA1Range(s.store.sheetName, defaultRowFullTableRange),
+		convertedRows,
+	)
+	return err
+}
+
+func newGoogleSheetInsertStmt(store *GoogleSheetRowStore, rows []interface{}) *googleSheetInsertStmt {
+	return &googleSheetInsertStmt{
+		store: store,
+		rows:  rows,
+	}
 }
 
 type googleSheetUpdateStmt struct {

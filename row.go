@@ -50,10 +50,12 @@ func (s *GoogleSheetRowStore) RawInsert(rows ...[]interface{}) *googleSheetRawIn
 // For example, a struct will be converted into a map[string]interface{} and then into []interface{} (following the
 // column mapping ordering).
 //
-// There needs to be a lot of type handling here.
-// TODO(edocsss): implement this
+// A few things to take note:
+// - Only `struct` base type (including a pointer to a struct) is supported.
+// - Each field name corresponds to the column name (case-sensitive).
+// - The mapping between field name and column name can be changed by adding the struct field tag `db:"<col_name>"`.
 func (s *GoogleSheetRowStore) Insert(rows ...interface{}) *googleSheetInsertStmt {
-	panic("not implemented yet")
+	return newGoogleSheetInsertStmt(s, rows)
 }
 
 // Update applies the given value for each column into the applicable rows.

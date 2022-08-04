@@ -10,9 +10,9 @@ import (
 )
 
 type testPerson struct {
-	Name string `json:"name"`
-	Age  int    `json:"age"`
-	DOB  string `json:"dob"`
+	Name string `json:"name" db:"name"`
+	Age  int    `json:"age" db:"age"`
+	DOB  string `json:"dob" db:"dob"`
 }
 
 func TestGoogleSheetRowStore_Integration(t *testing.T) {
@@ -47,8 +47,20 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 	err = db.RawInsert(
 		[]interface{}{"name1", 10, "1-1-1999"},
 		[]interface{}{"name2", 11, "1-1-2000"},
-		[]interface{}{"name3", 12, "1-1-2001"},
 	).Exec(context.Background())
+	assert.Nil(t, err)
+
+	err = db.Insert(nil).Exec(context.Background())
+	assert.NotNil(t, err)
+
+	err = db.Insert([]interface{}{"name3", 12, "1-1-2001"}).Exec(context.Background())
+	assert.NotNil(t, err)
+
+	err = db.Insert(testPerson{
+		Name: "name3",
+		Age:  12,
+		DOB:  "1-1-2001",
+	}).Exec(context.Background())
 	assert.Nil(t, err)
 
 	err = db.Update(map[string]interface{}{"name": "name4"}).

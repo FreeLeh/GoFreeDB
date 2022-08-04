@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/FreeLeh/GoFreeLeh/internal/google/sheets"
+	"github.com/mitchellh/mapstructure"
 )
 
 func currentTimeMs() int64 {
@@ -70,4 +71,18 @@ func generateColumnName(n int) string {
 	}
 
 	return col
+}
+
+func mapstructureDecode(input interface{}, output interface{}) error {
+	config := &mapstructure.DecoderConfig{
+		Result:  output,
+		TagName: "db",
+	}
+
+	decoder, err := mapstructure.NewDecoder(config)
+	if err != nil {
+		return err
+	}
+
+	return decoder.Decode(input)
 }
