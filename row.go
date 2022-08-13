@@ -37,15 +37,6 @@ func (s *GoogleSheetRowStore) Select(output interface{}, columns ...string) *goo
 	return newGoogleSheetSelectStmt(s, output, columns)
 }
 
-// RawInsert inserts all the values in `rows` into the table.
-// Note that each value in the `interface{}` is going to be JSON marshalled.
-func (s *GoogleSheetRowStore) RawInsert(rows ...[]interface{}) *googleSheetRawInsertStmt {
-	for i := range rows {
-		rows[i] = append(rows[i], currentTimeMs())
-	}
-	return newGoogleSheetRawInsertStmt(s, rows)
-}
-
 // Insert will try to infer what is the type of each row and perform certain logic based on the type.
 // For example, a struct will be converted into a map[string]interface{} and then into []interface{} (following the
 // column mapping ordering).
@@ -67,6 +58,10 @@ func (s *GoogleSheetRowStore) Update(colToValue map[string]interface{}) *googleS
 
 func (s *GoogleSheetRowStore) Delete() *googleSheetDeleteStmt {
 	return newGoogleSheetDeleteStmt(s)
+}
+
+func (s *GoogleSheetRowStore) Count() *googleSheetCountStmt {
+	return newGoogleSheetCountStmt(s)
 }
 
 func (s *GoogleSheetRowStore) Close(ctx context.Context) error {

@@ -284,38 +284,12 @@ func newGoogleSheetSelectStmtWithReplacer(
 	}
 }
 
-type googleSheetRawInsertStmt struct {
-	store *GoogleSheetRowStore
-	rows  [][]interface{}
-}
-
-func (s *googleSheetRawInsertStmt) Exec(ctx context.Context) error {
-	if len(s.rows) == 0 {
-		return nil
-	}
-
-	_, err := s.store.wrapper.OverwriteRows(
-		ctx,
-		s.store.spreadsheetID,
-		getA1Range(s.store.sheetName, defaultRowFullTableRange),
-		s.rows,
-	)
-	return err
-}
-
-func newGoogleSheetRawInsertStmt(store *GoogleSheetRowStore, rows [][]interface{}) *googleSheetRawInsertStmt {
-	return &googleSheetRawInsertStmt{
-		store: store,
-		rows:  rows,
-	}
-}
-
 type googleSheetInsertStmt struct {
 	store *GoogleSheetRowStore
 	rows  []interface{}
 }
 
-func (s *googleSheetInsertStmt) convertRowToSlice(row interface{}) ([]interface{}, error) {
+func (s *googleSheetInsertStmt) convertRowToSlice(row interface{}, curTs int64) ([]interface{}, error) {
 	if row == nil {
 		return nil, errors.New("row type must not be nil")
 	}
@@ -340,6 +314,8 @@ func (s *googleSheetInsertStmt) convertRowToSlice(row interface{}) ([]interface{
 		}
 	}
 
+	// Insert the _ts value.
+	result[len(s.store.colsMapping)-1] = curTs
 	return result, nil
 }
 
@@ -349,8 +325,10 @@ func (s *googleSheetInsertStmt) Exec(ctx context.Context) error {
 	}
 
 	convertedRows := make([][]interface{}, 0, len(s.rows))
+	curTs := currentTimeMs()
+
 	for _, row := range s.rows {
-		r, err := s.convertRowToSlice(row)
+		r, err := s.convertRowToSlice(row, curTs)
 		if err != nil {
 			return fmt.Errorf("cannot execute google sheet insert statement due to row conversion error: %w", err)
 		}
@@ -478,6 +456,56 @@ func (s *googleSheetDeleteStmt) Exec(ctx context.Context) error {
 
 func newGoogleSheetDeleteStmt(store *GoogleSheetRowStore) *googleSheetDeleteStmt {
 	return &googleSheetDeleteStmt{store: store}
+}
+
+type googleSheetCountStmt struct {
+	store     *GoogleSheetRowStore
+	where     string
+	whereArgs []interface{}
+}
+
+func (s *googleSheetCountStmt) Where(condition string, args ...interface{}) *googleSheetCountStmt {
+	s.where = condition
+	s.whereArgs = args
+	return s
+}
+
+func (s *googleSheetCountStmt) Exec(ctx context.Context) (uint64, error) {
+	selectStmt, err := newGoogleSheetSelectStmt(s.store, nil, []string{rowTsCol}).
+		Where(s.where, s.whereArgs...).
+		generateSelect()
+	if err != nil {
+		return 0, err
+	}
+
+	formula := fmt.Sprintf(
+		rwoCountQueryTemplate,
+		getA1Range(s.store.sheetName, defaultRowFullTableRange),
+		selectStmt,
+	)
+
+	result, err := s.store.wrapper.UpdateRows(
+		ctx,
+		s.store.spreadsheetID,
+		s.store.scratchpadLocation.Original,
+		[][]interface{}{{formula}},
+	)
+	if err != nil {
+		return 0, err
+	}
+	if len(result.UpdatedValues) == 0 || len(result.UpdatedValues[0]) == 0 {
+		return 0, fmt.Errorf("error retrieving row indices to delete: %+v", result)
+	}
+
+	raw := result.UpdatedValues[0][0].(string)
+	if raw == naValue || raw == errorValue || raw == "" {
+		return 0, fmt.Errorf("error retrieving row indices to delete: %s", raw)
+	}
+	return strconv.ParseUint(raw, 10, 64)
+}
+
+func newGoogleSheetCountStmt(store *GoogleSheetRowStore) *googleSheetCountStmt {
+	return &googleSheetCountStmt{store: store}
 }
 
 func generateSelectQuery(store *GoogleSheetRowStore, where string, whereArgs []interface{}) (string, error) {

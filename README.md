@@ -265,10 +265,10 @@ type Person struct {
 
 // Inserts a bunch of rows.
 // Note that the here matters, and it should follow the GoogleSheetRowStoreConfig.Columns settings.
-_ = store.RawInsert(
-    []interface{}{"name1", 10},
-    []interface{}{"name2", 11},
-    []interface{}{"name3", 12},
+_ = store.Insert(
+	Person{Name: "name1", Age: 10},
+	Person{Name: "name2", Age: 11},
+	Person{Name: "name3", Age: 12},
 ).Exec(context.Background())
 
 // Updates the name column for rows with age = 10
@@ -390,23 +390,35 @@ ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 err := store.Select(&result).Where("name = ? AND age = ?", "bob", 12).Exec(ctx)
 ```
  
-### `RawInsert(rows ...[]interface{}) *googleSheetRawInsertStmt`
+### `Insert(rows ...interface{}) *googleSheetInsertStmt`
 
-- `RawInsert` returns a statement to perform the actual insert operation.
-- The `rows` argument is a slice of an `interface{}` slice.
-- The ordering of the values inside each slice of `interface{}` matters as it is the ordering that this library will use when inserting into the Google Sheet.
+- `Insert` returns a statement to perform the actual insert operation.
+- Each element of the `rows` argument must be a struct or a pointer to a struct. Providing data types will result in an error during `Exec()`.
+- Please note that the struct field name will be used as the column name (case-sensitive). If you want to change the mapping, you can add the struct field tag `db:"<col_name>"`.
 
-> This function is called `RawInsert` because the library is not really concerned with how the values in each row is formed.
-> There is also no type checking involved.
-> In the future, we are thinking of adding an `Insert` function that will provide a simple type checking mechanism.
-
-#### `googleSheetRawInsertStmt`
+#### `googleSheetInsertStmt`
 
 ##### `Exec(ctx context.Context) error`
 
 - This function will actually execute the `INSERT` statement.
 - This works by appending new rows into Google Sheets.
 - There is only one API call involved in this function.
+
+Examples:
+
+```go
+// Without the `db` struct tag, the column name used will be "Name" and "Age".
+type Person struct {
+	Name string `db:"name"`
+	Age int `db:"age"`
+}
+
+ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+err := store.Insert(
+	Person{Name: "name1", Age: 11},
+    Person{Name: "name2", Age: 12},
+).Exec(ctx)
+```
 
 ### `Update(colToValue map[string]interface{}) *googleSheetUpdateStmt`
  

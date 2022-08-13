@@ -18,7 +18,7 @@ type person struct {
 func TestGenerateSelect(t *testing.T) {
 	t.Run("successful_basic", func(t *testing.T) {
 		store := &GoogleSheetRowStore{
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}},
+			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"C", 2}},
 		}
 		stmt := newGoogleSheetSelectStmt(store, nil, []string{"col1", "col2"})
 
@@ -29,7 +29,7 @@ func TestGenerateSelect(t *testing.T) {
 
 	t.Run("successful_all_columns", func(t *testing.T) {
 		store := &GoogleSheetRowStore{
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}},
+			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"C", 2}},
 			config:      GoogleSheetRowStoreConfig{Columns: []string{"col1", "col2"}},
 		}
 		stmt := newGoogleSheetSelectStmt(store, nil, []string{})
@@ -41,7 +41,7 @@ func TestGenerateSelect(t *testing.T) {
 
 	t.Run("unsuccessful_basic_wrong_column", func(t *testing.T) {
 		store := &GoogleSheetRowStore{
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}},
+			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"C", 2}},
 		}
 		stmt := newGoogleSheetSelectStmt(store, nil, []string{"col1", "col2", "col3"})
 
@@ -52,7 +52,7 @@ func TestGenerateSelect(t *testing.T) {
 
 	t.Run("successful_with_where", func(t *testing.T) {
 		store := &GoogleSheetRowStore{
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}},
+			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"C", 2}},
 		}
 		stmt := newGoogleSheetSelectStmt(store, nil, []string{"col1", "col2"})
 		stmt.Where("(col1 > ? AND col2 <= ?) OR (col1 != ? AND col2 == ?)", 100, true, "value", 3.14)
@@ -64,7 +64,7 @@ func TestGenerateSelect(t *testing.T) {
 
 	t.Run("unsuccessful_with_where_wrong_arg_count", func(t *testing.T) {
 		store := &GoogleSheetRowStore{
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}},
+			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"C", 2}},
 		}
 		stmt := newGoogleSheetSelectStmt(store, nil, []string{"col1", "col2"})
 		stmt.Where("(col1 > ? AND col2 <= ?) OR (col1 != ? AND col2 == ?)", 100, true)
@@ -76,7 +76,7 @@ func TestGenerateSelect(t *testing.T) {
 
 	t.Run("unsuccessful_with_where_unsupported_arg_type", func(t *testing.T) {
 		store := &GoogleSheetRowStore{
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}},
+			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"C", 2}},
 		}
 		stmt := newGoogleSheetSelectStmt(store, nil, []string{"col1", "col2"})
 		stmt.Where("(col1 > ? AND col2 <= ?) OR (col1 != ? AND col2 == ?)", 100, true, nil, []string{})
@@ -88,7 +88,7 @@ func TestGenerateSelect(t *testing.T) {
 
 	t.Run("successful_with_limit_offset", func(t *testing.T) {
 		store := &GoogleSheetRowStore{
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}},
+			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"C", 2}},
 		}
 		stmt := newGoogleSheetSelectStmt(store, nil, []string{"col1", "col2"})
 		stmt.Limit(10).Offset(100)
@@ -100,7 +100,7 @@ func TestGenerateSelect(t *testing.T) {
 
 	t.Run("successful_with_order_by", func(t *testing.T) {
 		store := &GoogleSheetRowStore{
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}},
+			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"C", 2}},
 		}
 		stmt := newGoogleSheetSelectStmt(store, nil, []string{"col1", "col2"})
 		stmt.OrderBy([]ColumnOrderBy{{Column: "col1", OrderBy: OrderByDesc}, {Column: "col2", OrderBy: OrderByAsc}})
@@ -116,7 +116,7 @@ func TestSelectStmt_Exec(t *testing.T) {
 		wrapper := &sheets.MockWrapper{}
 		store := &GoogleSheetRowStore{
 			wrapper:     wrapper,
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}},
+			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"D", 3}},
 		}
 		o := 0
 		stmt := newGoogleSheetSelectStmt(store, &o, []string{"col1", "col2"})
@@ -128,7 +128,7 @@ func TestSelectStmt_Exec(t *testing.T) {
 		wrapper := &sheets.MockWrapper{}
 		store := &GoogleSheetRowStore{
 			wrapper:     wrapper,
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}},
+			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"D", 3}},
 		}
 		var o []int
 		stmt := newGoogleSheetSelectStmt(store, o, []string{"col1", "col2"})
@@ -140,7 +140,7 @@ func TestSelectStmt_Exec(t *testing.T) {
 		wrapper := &sheets.MockWrapper{}
 		store := &GoogleSheetRowStore{
 			wrapper:     wrapper,
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}},
+			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"D", 3}},
 		}
 		stmt := newGoogleSheetSelectStmt(store, nil, []string{"col1", "col2"})
 
@@ -151,7 +151,7 @@ func TestSelectStmt_Exec(t *testing.T) {
 		wrapper := &sheets.MockWrapper{QueryRowsError: errors.New("some error")}
 		store := &GoogleSheetRowStore{
 			wrapper:     wrapper,
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}},
+			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"D", 3}},
 		}
 		var out []int
 		stmt := newGoogleSheetSelectStmt(store, &out, []string{"col1", "col2"})
@@ -167,7 +167,7 @@ func TestSelectStmt_Exec(t *testing.T) {
 		}}}
 		store := &GoogleSheetRowStore{
 			wrapper:     wrapper,
-			colsMapping: map[string]colIdx{"name": {"A", 0}, "age": {"B", 1}, "dob": {"C", 2}},
+			colsMapping: map[string]colIdx{"name": {"A", 0}, "age": {"B", 1}, "dob": {"C", 2}, "_ts": {"D", 3}},
 			config: GoogleSheetRowStoreConfig{
 				Columns: []string{"name", "age", "dob"},
 			},
@@ -192,7 +192,7 @@ func TestSelectStmt_Exec(t *testing.T) {
 		}}}
 		store := &GoogleSheetRowStore{
 			wrapper:     wrapper,
-			colsMapping: map[string]colIdx{"name": {"A", 0}, "age": {"B", 1}, "dob": {"C", 2}},
+			colsMapping: map[string]colIdx{"name": {"A", 0}, "age": {"B", 1}, "dob": {"C", 2}, "_ts": {"D", 3}},
 			config: GoogleSheetRowStoreConfig{
 				Columns: []string{"name", "age", "dob"},
 			},
@@ -215,28 +215,29 @@ func TestGoogleSheetInsertStmt_convertRowToSlice(t *testing.T) {
 	wrapper := &sheets.MockWrapper{}
 	store := &GoogleSheetRowStore{
 		wrapper:     wrapper,
-		colsMapping: map[string]colIdx{"name": {"A", 0}, "age": {"B", 1}, "dob": {"C", 2}},
+		colsMapping: map[string]colIdx{"name": {"A", 0}, "age": {"B", 1}, "dob": {"C", 2}, "_ts": {"D", 3}},
 		config: GoogleSheetRowStoreConfig{
 			Columns: []string{"name", "age", "dob"},
 		},
 	}
+	ts := int64(1)
 
 	t.Run("non_struct", func(t *testing.T) {
 		stmt := newGoogleSheetInsertStmt(store, nil)
 
-		result, err := stmt.convertRowToSlice(nil)
+		result, err := stmt.convertRowToSlice(nil, ts)
 		assert.Nil(t, result)
 		assert.NotNil(t, err)
 
-		result, err = stmt.convertRowToSlice(1)
+		result, err = stmt.convertRowToSlice(1, ts)
 		assert.Nil(t, result)
 		assert.NotNil(t, err)
 
-		result, err = stmt.convertRowToSlice("1")
+		result, err = stmt.convertRowToSlice("1", ts)
 		assert.Nil(t, result)
 		assert.NotNil(t, err)
 
-		result, err = stmt.convertRowToSlice([]int{1, 2, 3})
+		result, err = stmt.convertRowToSlice([]int{1, 2, 3}, ts)
 		assert.Nil(t, result)
 		assert.NotNil(t, err)
 	})
@@ -244,24 +245,24 @@ func TestGoogleSheetInsertStmt_convertRowToSlice(t *testing.T) {
 	t.Run("struct", func(t *testing.T) {
 		stmt := newGoogleSheetInsertStmt(store, nil)
 
-		result, err := stmt.convertRowToSlice(person{Name: "blah", Age: 10, DOB: "2021"})
-		assert.Equal(t, []interface{}{"blah", 10, "2021"}, result)
+		result, err := stmt.convertRowToSlice(person{Name: "blah", Age: 10, DOB: "2021"}, ts)
+		assert.Equal(t, []interface{}{"blah", 10, "2021", ts}, result)
 		assert.Nil(t, err)
 
-		result, err = stmt.convertRowToSlice(&person{Name: "blah", Age: 10, DOB: "2021"})
-		assert.Equal(t, []interface{}{"blah", 10, "2021"}, result)
+		result, err = stmt.convertRowToSlice(&person{Name: "blah", Age: 10, DOB: "2021"}, ts)
+		assert.Equal(t, []interface{}{"blah", 10, "2021", ts}, result)
 		assert.Nil(t, err)
 
-		result, err = stmt.convertRowToSlice(person{Name: "blah", DOB: "2021"})
-		assert.Equal(t, []interface{}{"blah", nil, "2021"}, result)
+		result, err = stmt.convertRowToSlice(person{Name: "blah", DOB: "2021"}, ts)
+		assert.Equal(t, []interface{}{"blah", nil, "2021", ts}, result)
 		assert.Nil(t, err)
 
 		type dummy struct {
 			Name string `db:"name"`
 		}
 
-		result, err = stmt.convertRowToSlice(dummy{Name: "blah"})
-		assert.Equal(t, []interface{}{"blah", nil, nil}, result)
+		result, err = stmt.convertRowToSlice(dummy{Name: "blah"}, ts)
+		assert.Equal(t, []interface{}{"blah", nil, nil, ts}, result)
 		assert.Nil(t, err)
 	})
 }

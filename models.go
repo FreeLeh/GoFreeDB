@@ -36,6 +36,7 @@ const (
 	kvFindKeyA1RangeQueryTemplate = "=MATCH(\"%s\", %s, 0)"
 
 	rowGetIndicesQueryTemplate           = "=JOIN(\",\", ARRAYFORMULA(QUERY({%s, ROW(%s)}, \"%s\")))"
+	rwoCountQueryTemplate                = "=COUNT(QUERY(%s, \"%s\"))"
 	rowUpdateModifyWhereNonEmptyTemplate = "%s IS NOT NULL AND %s"
 	rowUpdateModifyWhereEmptyTemplate    = "%s IS NOT NULL"
 
