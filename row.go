@@ -144,6 +144,10 @@ func NewGoogleSheetRowStore(
 // Currently, we use this for detecting which rows are really empty for UPDATE without WHERE clause.
 // Otherwise, it will always update all rows (instead of the non-empty rows only).
 func injectTimestampCol(config GoogleSheetRowStoreConfig) GoogleSheetRowStoreConfig {
-	config.Columns = append(config.Columns, rowTsCol)
+	newCols := make([]string, 0, len(config.Columns)+1)
+	newCols = append(newCols, rowIdxCol)
+	newCols = append(newCols, config.Columns...)
+	config.Columns = newCols
+
 	return config
 }

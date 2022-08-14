@@ -41,9 +41,10 @@ const (
 	rowUpdateModifyWhereNonEmptyTemplate = "%s IS NOT NULL AND %s"
 	rowUpdateModifyWhereEmptyTemplate    = "%s IS NOT NULL"
 
-	naValue    = "#N/A"
-	errorValue = "#ERROR!"
-	rowTsCol   = "_ts"
+	naValue       = "#N/A"
+	errorValue    = "#ERROR!"
+	rowIdxCol     = "_rid"
+	rowIdxFormula = "=ROW()"
 )
 
 var (

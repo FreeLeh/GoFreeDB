@@ -310,7 +310,7 @@ type googleSheetInsertStmt struct {
 	rows  []interface{}
 }
 
-func (s *googleSheetInsertStmt) convertRowToSlice(row interface{}, curTs int64) ([]interface{}, error) {
+func (s *googleSheetInsertStmt) convertRowToSlice(row interface{}) ([]interface{}, error) {
 	if row == nil {
 		return nil, errors.New("row type must not be nil")
 	}
@@ -329,14 +329,14 @@ func (s *googleSheetInsertStmt) convertRowToSlice(row interface{}, curTs int64) 
 	}
 
 	result := make([]interface{}, len(s.store.colsMapping))
+	result[0] = rowIdxFormula
+
 	for key, value := range output {
 		if colIdx, ok := s.store.colsMapping[key]; ok {
 			result[colIdx.idx] = value
 		}
 	}
 
-	// Insert the _ts value.
-	result[len(s.store.colsMapping)-1] = curTs
 	return result, nil
 }
 
@@ -346,10 +346,8 @@ func (s *googleSheetInsertStmt) Exec(ctx context.Context) error {
 	}
 
 	convertedRows := make([][]interface{}, 0, len(s.rows))
-	curTs := currentTimeMs()
-
 	for _, row := range s.rows {
-		r, err := s.convertRowToSlice(row, curTs)
+		r, err := s.convertRowToSlice(row)
 		if err != nil {
 			return fmt.Errorf("cannot execute google sheet insert statement due to row conversion error: %w", err)
 		}
@@ -382,9 +380,9 @@ func (s *googleSheetUpdateStmt) Where(condition string, args ...interface{}) *go
 	// The first condition `_ts IS NOT NULL` is necessary to ensure we are just updating rows that are non-empty.
 	// This is required for UPDATE without WHERE clause (otherwise it will see every row as update target).
 	if condition == "" {
-		s.queryBuilder.Where(fmt.Sprintf(rowUpdateModifyWhereEmptyTemplate, rowTsCol), args...)
+		s.queryBuilder.Where(fmt.Sprintf(rowUpdateModifyWhereEmptyTemplate, rowIdxCol), args...)
 	} else {
-		s.queryBuilder.Where(fmt.Sprintf(rowUpdateModifyWhereNonEmptyTemplate, rowTsCol, condition), args...)
+		s.queryBuilder.Where(fmt.Sprintf(rowUpdateModifyWhereNonEmptyTemplate, rowIdxCol, condition), args...)
 	}
 	return s
 }
@@ -521,7 +519,7 @@ func (s *googleSheetCountStmt) Exec(ctx context.Context) (uint64, error) {
 func newGoogleSheetCountStmt(store *GoogleSheetRowStore) *googleSheetCountStmt {
 	return &googleSheetCountStmt{
 		store:        store,
-		queryBuilder: newQueryBuilder(store.colsMapping.NameMap(), []string{rowTsCol}),
+		queryBuilder: newQueryBuilder(store.colsMapping.NameMap(), []string{rowIdxCol}),
 	}
 }
 

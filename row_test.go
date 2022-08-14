@@ -89,3 +89,8 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 	err = db.Delete().Where("name = ?", "name4").Exec(context.Background())
 	assert.Nil(t, err)
 }
+
+func TestInjectTimestampCol(t *testing.T) {
+	result := injectTimestampCol(GoogleSheetRowStoreConfig{Columns: []string{"col1", "col2"}})
+	assert.Equal(t, GoogleSheetRowStoreConfig{Columns: []string{rowIdxCol, "col1", "col2"}}, result)
+}
