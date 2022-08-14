@@ -15,100 +15,79 @@ type person struct {
 	DOB  string `db:"dob,omitempty"`
 }
 
-func TestGenerateSelect(t *testing.T) {
+func TestGenerateQuery(t *testing.T) {
+	colsMapping := colsMapping{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"C", 2}}
+
 	t.Run("successful_basic", func(t *testing.T) {
-		store := &GoogleSheetRowStore{
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"C", 2}},
-		}
-		stmt := newGoogleSheetSelectStmt(store, nil, []string{"col1", "col2"})
-
-		result, err := stmt.generateSelect()
-		assert.Nil(t, err)
-		assert.Equal(t, "select A, B", result)
-	})
-
-	t.Run("successful_all_columns", func(t *testing.T) {
-		store := &GoogleSheetRowStore{
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"C", 2}},
-			config:      GoogleSheetRowStoreConfig{Columns: []string{"col1", "col2"}},
-		}
-		stmt := newGoogleSheetSelectStmt(store, nil, []string{})
-
-		result, err := stmt.generateSelect()
+		builder := newQueryBuilder(colsMapping.NameMap(), []string{"col1", "col2"})
+		result, err := builder.Generate()
 		assert.Nil(t, err)
 		assert.Equal(t, "select A, B", result)
 	})
 
 	t.Run("unsuccessful_basic_wrong_column", func(t *testing.T) {
-		store := &GoogleSheetRowStore{
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"C", 2}},
-		}
-		stmt := newGoogleSheetSelectStmt(store, nil, []string{"col1", "col2", "col3"})
-
-		result, err := stmt.generateSelect()
+		builder := newQueryBuilder(colsMapping.NameMap(), []string{"col1", "col2", "col3"})
+		result, err := builder.Generate()
 		assert.Nil(t, err)
 		assert.Equal(t, "select A, B, col3", result)
 	})
 
 	t.Run("successful_with_where", func(t *testing.T) {
-		store := &GoogleSheetRowStore{
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"C", 2}},
-		}
-		stmt := newGoogleSheetSelectStmt(store, nil, []string{"col1", "col2"})
-		stmt.Where("(col1 > ? AND col2 <= ?) OR (col1 != ? AND col2 == ?)", 100, true, "value", 3.14)
+		builder := newQueryBuilder(colsMapping.NameMap(), []string{"col1", "col2"})
+		builder.Where("(col1 > ? AND col2 <= ?) OR (col1 != ? AND col2 == ?)", 100, true, "value", 3.14)
 
-		result, err := stmt.generateSelect()
+		result, err := builder.Generate()
 		assert.Nil(t, err)
 		assert.Equal(t, "select A, B where (A > 100 AND B <= true ) OR (A != 'value' AND B == 3.14 )", result)
 	})
 
 	t.Run("unsuccessful_with_where_wrong_arg_count", func(t *testing.T) {
-		store := &GoogleSheetRowStore{
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"C", 2}},
-		}
-		stmt := newGoogleSheetSelectStmt(store, nil, []string{"col1", "col2"})
-		stmt.Where("(col1 > ? AND col2 <= ?) OR (col1 != ? AND col2 == ?)", 100, true)
+		builder := newQueryBuilder(colsMapping.NameMap(), []string{"col1", "col2"})
+		builder.Where("(col1 > ? AND col2 <= ?) OR (col1 != ? AND col2 == ?)", 100, true)
 
-		result, err := stmt.generateSelect()
+		result, err := builder.Generate()
 		assert.NotNil(t, err)
 		assert.Equal(t, "", result)
 	})
 
 	t.Run("unsuccessful_with_where_unsupported_arg_type", func(t *testing.T) {
-		store := &GoogleSheetRowStore{
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"C", 2}},
-		}
-		stmt := newGoogleSheetSelectStmt(store, nil, []string{"col1", "col2"})
-		stmt.Where("(col1 > ? AND col2 <= ?) OR (col1 != ? AND col2 == ?)", 100, true, nil, []string{})
+		builder := newQueryBuilder(colsMapping.NameMap(), []string{"col1", "col2"})
+		builder.Where("(col1 > ? AND col2 <= ?) OR (col1 != ? AND col2 == ?)", 100, true, nil, []string{})
 
-		result, err := stmt.generateSelect()
+		result, err := builder.Generate()
 		assert.NotNil(t, err)
 		assert.Equal(t, "", result)
 	})
 
 	t.Run("successful_with_limit_offset", func(t *testing.T) {
-		store := &GoogleSheetRowStore{
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"C", 2}},
-		}
-		stmt := newGoogleSheetSelectStmt(store, nil, []string{"col1", "col2"})
-		stmt.Limit(10).Offset(100)
+		builder := newQueryBuilder(colsMapping.NameMap(), []string{"col1", "col2"})
+		builder.Limit(10).Offset(100)
 
-		result, err := stmt.generateSelect()
+		result, err := builder.Generate()
 		assert.Nil(t, err)
 		assert.Equal(t, "select A, B offset 100 limit 10", result)
 	})
 
 	t.Run("successful_with_order_by", func(t *testing.T) {
-		store := &GoogleSheetRowStore{
-			colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"C", 2}},
-		}
-		stmt := newGoogleSheetSelectStmt(store, nil, []string{"col1", "col2"})
-		stmt.OrderBy([]ColumnOrderBy{{Column: "col1", OrderBy: OrderByDesc}, {Column: "col2", OrderBy: OrderByAsc}})
+		builder := newQueryBuilder(colsMapping.NameMap(), []string{"col1", "col2"})
+		builder.OrderBy([]ColumnOrderBy{{Column: "col1", OrderBy: OrderByDesc}, {Column: "col2", OrderBy: OrderByAsc}})
 
-		result, err := stmt.generateSelect()
+		result, err := builder.Generate()
 		assert.Nil(t, err)
 		assert.Equal(t, "select A, B order by A DESC, B ASC", result)
 	})
+}
+
+func TestSelectStmt_AllColumns(t *testing.T) {
+	store := &GoogleSheetRowStore{
+		colsMapping: map[string]colIdx{"col1": {"A", 0}, "col2": {"B", 1}, "_ts": {"C", 2}},
+		config:      GoogleSheetRowStoreConfig{Columns: []string{"col1", "col2"}},
+	}
+	stmt := newGoogleSheetSelectStmt(store, nil, []string{})
+
+	result, err := stmt.queryBuilder.Generate()
+	assert.Nil(t, err)
+	assert.Equal(t, "select A, B", result)
 }
 
 func TestSelectStmt_Exec(t *testing.T) {

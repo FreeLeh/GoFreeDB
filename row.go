@@ -29,7 +29,7 @@ type GoogleSheetRowStore struct {
 	sheetName           string
 	scratchpadSheetName string
 	scratchpadLocation  sheets.A1Range
-	colsMapping         map[string]colIdx
+	colsMapping         colsMapping
 	config              GoogleSheetRowStoreConfig
 }
 

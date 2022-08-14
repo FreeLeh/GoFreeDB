@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"regexp"
+	"strconv"
 
 	"github.com/FreeLeh/GoFreeLeh/internal/google/sheets"
 )
@@ -52,6 +53,8 @@ var (
 	defaultRowFullTableRange = "A2:" + generateColumnName(maxColumn-1)
 	rowDeleteRangeTemplate   = "A%d:" + generateColumnName(maxColumn-1) + "%d"
 
+	lastColIdxName = "Col" + strconv.FormatInt(int64(maxColumn+1), 10)
+
 	googleSheetSelectStmtStringKeyword = regexp.MustCompile("^(date|datetime|timeofday)")
 )
 
@@ -76,6 +79,24 @@ type sheetsWrapper interface {
 type colIdx struct {
 	name string
 	idx  int
+}
+
+type colsMapping map[string]colIdx
+
+func (m colsMapping) NameMap() map[string]string {
+	result := make(map[string]string, 0)
+	for col, val := range m {
+		result[col] = val.name
+	}
+	return result
+}
+
+func (m colsMapping) ColIdxNameMap() map[string]string {
+	result := make(map[string]string, 0)
+	for col, val := range m {
+		result[col] = "Col" + strconv.FormatInt(int64(val.idx+1), 10)
+	}
+	return result
 }
 
 type ColumnOrderBy struct {
