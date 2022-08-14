@@ -410,7 +410,7 @@ func (s *googleSheetUpdateStmt) Exec(ctx context.Context) error {
 	return err
 }
 
-func (s *googleSheetUpdateStmt) generateBatchUpdateRequests(rowIndices []int) ([]sheets.BatchUpdateRowsRequest, error) {
+func (s *googleSheetUpdateStmt) generateBatchUpdateRequests(rowIndices []int64) ([]sheets.BatchUpdateRowsRequest, error) {
 	requests := make([]sheets.BatchUpdateRowsRequest, 0)
 
 	for col, value := range s.colToValue {
@@ -420,7 +420,7 @@ func (s *googleSheetUpdateStmt) generateBatchUpdateRequests(rowIndices []int) ([
 		}
 
 		for _, rowIdx := range rowIndices {
-			a1Range := colIdx.name + strconv.FormatInt(int64(rowIdx), 10)
+			a1Range := colIdx.name + strconv.FormatInt(rowIdx, 10)
 			requests = append(requests, sheets.BatchUpdateRowsRequest{
 				A1Range: getA1Range(s.store.sheetName, a1Range),
 				Values:  [][]interface{}{{value}},
@@ -435,7 +435,7 @@ func newGoogleSheetUpdateStmt(store *GoogleSheetRowStore, colToValue map[string]
 	return &googleSheetUpdateStmt{
 		store:        store,
 		colToValue:   colToValue,
-		queryBuilder: newQueryBuilder(store.colsMapping.ColIdxNameMap(), []string{lastColIdxName}),
+		queryBuilder: newQueryBuilder(store.colsMapping.NameMap(), []string{rowIdxCol}),
 	}
 }
 
@@ -523,50 +523,33 @@ func newGoogleSheetCountStmt(store *GoogleSheetRowStore) *googleSheetCountStmt {
 	}
 }
 
-func getRowIndices(ctx context.Context, store *GoogleSheetRowStore, selectStmt string) ([]int, error) {
-	formula := fmt.Sprintf(
-		rowGetIndicesQueryTemplate,
-		getA1Range(store.sheetName, defaultRowFullTableRange),
-		getA1Range(store.sheetName, defaultRowFullTableRange),
-		selectStmt,
-	)
-
-	result, err := store.wrapper.UpdateRows(
-		ctx,
-		store.spreadsheetID,
-		store.scratchpadLocation.Original,
-		[][]interface{}{{formula}},
-	)
+func getRowIndices(ctx context.Context, store *GoogleSheetRowStore, selectStmt string) ([]int64, error) {
+	result, err := store.wrapper.QueryRows(ctx, store.spreadsheetID, store.sheetName, selectStmt, true)
 	if err != nil {
 		return nil, err
 	}
-	if len(result.UpdatedValues) == 0 || len(result.UpdatedValues[0]) == 0 {
-		return nil, fmt.Errorf("error retrieving row indices to delete: %+v", result)
+	if len(result.Rows) == 0 {
+		return nil, nil
 	}
 
-	raw := result.UpdatedValues[0][0].(string)
-	if raw == naValue {
-		return []int{}, nil
-	}
-	if raw == errorValue || raw == "" {
-		return nil, fmt.Errorf("error retrieving row indices to delete: %s", raw)
-	}
-
-	rowIndicesStr := strings.Split(raw, ",")
-	rowIndices := make([]int, len(rowIndicesStr))
-
-	for i := range rowIndicesStr {
-		idx, err := strconv.ParseInt(rowIndicesStr[i], 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error converting row indices to delete: %w", err)
+	rowIndices := make([]int64, 0)
+	for _, row := range result.Rows {
+		if len(row) != 1 {
+			return nil, fmt.Errorf("error retrieving row indices: %+v", result)
 		}
-		rowIndices[i] = int(idx)
+
+		idx, ok := row[0].(int64)
+		if !ok {
+			return nil, fmt.Errorf("error converting row indices, value: %+v", row[0])
+		}
+
+		rowIndices = append(rowIndices, idx)
 	}
 
 	return rowIndices, nil
 }
 
-func generateRowA1Ranges(sheetName string, indices []int) []string {
+func generateRowA1Ranges(sheetName string, indices []int64) []string {
 	locations := make([]string, len(indices))
 	for i := range indices {
 		locations[i] = getA1Range(
