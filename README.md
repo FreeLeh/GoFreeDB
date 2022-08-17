@@ -389,6 +389,22 @@ Examples:
 ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 err := store.Select(&result).Where("name = ? AND age = ?", "bob", 12).Exec(ctx)
 ```
+
+### `Count() *googleSheetCountStmt`
+
+- `Count` returns a statement to perform the actual row counting operation.
+
+#### `googleSheetCountStmt`
+
+##### `Where(condition string, args ...interface{}) *googleSheetCountStmt`
+
+This works exactly the same as the `googleSheetSelectStmt.Where` function. You can refer to the above section for more details.
+
+##### `Exec(ctx context.Context) (uint64, error)`
+
+- This function will actually execute the `SELECT` statement and then counting the number of rows matching the criteria.
+- The number of rows is returned as a `uint64` return value.
+- There is only one API call involved in this function.
  
 ### `Insert(rows ...interface{}) *googleSheetInsertStmt`
 
