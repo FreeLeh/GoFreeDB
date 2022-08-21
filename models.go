@@ -16,10 +16,14 @@ type OrderBy string
 const (
 	KVModeDefault    KVMode = 0
 	KVModeAppendOnly KVMode = 1
+)
 
+const (
 	OrderByAsc  OrderBy = "ASC"
 	OrderByDesc OrderBy = "DESC"
+)
 
+const (
 	// Currently limited to 26.
 	// Otherwise, the sheet creation must extend the column as well to make the rowGetIndicesQueryTemplate formula works.
 	// TODO(edocsss): add an option to extend the number of columns.
@@ -49,7 +53,9 @@ const (
 
 var (
 	ErrKeyNotFound = errors.New("error key not found")
+)
 
+var (
 	defaultRowHeaderRange    = "A1:" + generateColumnName(maxColumn-1) + "1"
 	defaultRowFullTableRange = "A2:" + generateColumnName(maxColumn-1)
 	rowDeleteRangeTemplate   = "A%d:" + generateColumnName(maxColumn-1) + "%d"

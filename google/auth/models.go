@@ -1,5 +1,6 @@
 package auth
 
+// Scopes encapsulates a list of Google resources scopes to request during authentication step.
 type Scopes []string
 
 var (
