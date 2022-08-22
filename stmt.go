@@ -11,8 +11,7 @@ import (
 	"github.com/FreeLeh/GoFreeLeh/internal/google/sheets"
 )
 
-type googleSheetSelectStmt struct {
-	store     *GoogleSheetRowStore
+type queryBuilder struct {
 	replacer  *strings.Replacer
 	columns   []string
 	where     string
@@ -20,141 +19,87 @@ type googleSheetSelectStmt struct {
 	orderBy   []string
 	limit     uint64
 	offset    uint64
-	output    interface{}
 }
 
-func (s *googleSheetSelectStmt) Where(condition string, args ...interface{}) *googleSheetSelectStmt {
-	s.where = condition
-	s.whereArgs = args
-	return s
+func (q *queryBuilder) Where(condition string, args ...interface{}) *queryBuilder {
+	q.where = condition
+	q.whereArgs = args
+	return q
 }
 
-func (s *googleSheetSelectStmt) OrderBy(ordering []ColumnOrderBy) *googleSheetSelectStmt {
+func (q *queryBuilder) OrderBy(ordering []ColumnOrderBy) *queryBuilder {
 	orderBy := make([]string, 0, len(ordering))
 	for _, o := range ordering {
 		orderBy = append(orderBy, o.Column+" "+string(o.OrderBy))
 	}
 
-	s.orderBy = orderBy
-	return s
+	q.orderBy = orderBy
+	return q
 }
 
-func (s *googleSheetSelectStmt) Limit(limit uint64) *googleSheetSelectStmt {
-	s.limit = limit
-	return s
+func (q *queryBuilder) Limit(limit uint64) *queryBuilder {
+	q.limit = limit
+	return q
 }
 
-func (s *googleSheetSelectStmt) Offset(offset uint64) *googleSheetSelectStmt {
-	s.offset = offset
-	return s
+func (q *queryBuilder) Offset(offset uint64) *queryBuilder {
+	q.offset = offset
+	return q
 }
 
-func (s *googleSheetSelectStmt) Exec(ctx context.Context) error {
-	if err := s.ensureOutputSlice(); err != nil {
-		return err
-	}
-
-	stmt, err := s.generateSelect()
-	if err != nil {
-		return err
-	}
-
-	result, err := s.store.wrapper.QueryRows(
-		ctx,
-		s.store.spreadsheetID,
-		s.store.sheetName,
-		stmt,
-		true,
-	)
-	if err != nil {
-		return err
-	}
-
-	m := s.buildQueryResultMap(result)
-	return mapstructureDecode(m, s.output)
-}
-
-func (s *googleSheetSelectStmt) ensureOutputSlice() error {
-	// Passing an uninitialised slice will not compare to nil due to this: https://yourbasic.org/golang/gotcha-why-nil-error-not-equal-nil/
-	// Only if passing an untyped `nil` will compare to the `nil` in the line below.
-	// Observations as below:
-	//
-	// var o []int
-	// o == nil --> this is true because the compiler knows `o` is nil and of type `[]int`, so the `nil` on the right side is of the same `[]int` type.
-	//
-	// var x interface{} = o
-	// x == nil --> this is false because `o` has been boxed by `x` and the `nil` on the right side is of type `nil` (i.e. nil value of nil type).
-	// x == []int(nil) --> this is true because the `nil` has been casted explicitly to `nil` of type `[]int`.
-	if s.output == nil {
-		return errors.New("select statement output cannot be empty or nil")
-	}
-
-	t := reflect.TypeOf(s.output)
-	if t.Kind() != reflect.Ptr {
-		return errors.New("select statement output must be a pointer to a slice of something")
-	}
-
-	elem := t.Elem()
-	if elem.Kind() != reflect.Slice {
-		return fmt.Errorf("select statement output must be a pointer to a slice of something; current output type: %s", t.Kind().String())
-	}
-
-	return nil
-}
-
-func (s *googleSheetSelectStmt) generateSelect() (string, error) {
+func (q *queryBuilder) Generate() (string, error) {
 	stmt := &strings.Builder{}
 	stmt.WriteString("select")
 
-	if err := s.writeCols(stmt); err != nil {
+	if err := q.writeCols(stmt); err != nil {
 		return "", err
 	}
-	if err := s.writeWhere(stmt); err != nil {
+	if err := q.writeWhere(stmt); err != nil {
 		return "", err
 	}
-	if err := s.writeOrderBy(stmt); err != nil {
+	if err := q.writeOrderBy(stmt); err != nil {
 		return "", err
 	}
-	if err := s.writeOffset(stmt); err != nil {
+	if err := q.writeOffset(stmt); err != nil {
 		return "", err
 	}
-	if err := s.writeLimit(stmt); err != nil {
+	if err := q.writeLimit(stmt); err != nil {
 		return "", err
 	}
 
 	return stmt.String(), nil
 }
 
-func (s *googleSheetSelectStmt) writeCols(stmt *strings.Builder) error {
+func (q *queryBuilder) writeCols(stmt *strings.Builder) error {
 	stmt.WriteString(" ")
 
-	translated := make([]string, 0, len(s.columns))
-	for _, col := range s.columns {
-		translated = append(translated, s.replacer.Replace(col))
+	translated := make([]string, 0, len(q.columns))
+	for _, col := range q.columns {
+		translated = append(translated, q.replacer.Replace(col))
 	}
 
 	stmt.WriteString(strings.Join(translated, ", "))
 	return nil
 }
 
-func (s *googleSheetSelectStmt) writeWhere(stmt *strings.Builder) error {
-	if len(s.where) == 0 {
+func (q *queryBuilder) writeWhere(stmt *strings.Builder) error {
+	if len(q.where) == 0 {
 		return nil
 	}
 
-	nArgs := strings.Count(s.where, "?")
-	if nArgs != len(s.whereArgs) {
-		return fmt.Errorf("number of arguments required in the 'where' clause (%d) is not the same as the number of provided arguments (%d)", nArgs, len(s.whereArgs))
+	nArgs := strings.Count(q.where, "?")
+	if nArgs != len(q.whereArgs) {
+		return fmt.Errorf("number of arguments required in the 'where' clause (%d) is not the same as the number of provided arguments (%d)", nArgs, len(q.whereArgs))
 	}
 
-	where := s.replacer.Replace(s.where)
+	where := q.replacer.Replace(q.where)
 	tokens := strings.Split(where, "?")
 
 	result := make([]string, 0)
 	result = append(result, strings.TrimSpace(tokens[0]))
 
 	for i, token := range tokens[1:] {
-		arg, err := s.convertArg(s.whereArgs[i])
+		arg, err := q.convertArg(q.whereArgs[i])
 		if err != nil {
 			return fmt.Errorf("failed converting 'where' arguments: %v, %w", arg, err)
 		}
@@ -166,7 +111,7 @@ func (s *googleSheetSelectStmt) writeWhere(stmt *strings.Builder) error {
 	return nil
 }
 
-func (s *googleSheetSelectStmt) convertArg(arg interface{}) (string, error) {
+func (q *queryBuilder) convertArg(arg interface{}) (string, error) {
 	switch converted := arg.(type) {
 	case int:
 		return strconv.FormatInt(int64(converted), 10), nil
@@ -207,40 +152,101 @@ func (s *googleSheetSelectStmt) convertArg(arg interface{}) (string, error) {
 	}
 }
 
-func (s *googleSheetSelectStmt) writeOrderBy(stmt *strings.Builder) error {
-	if len(s.orderBy) == 0 {
+func (q *queryBuilder) writeOrderBy(stmt *strings.Builder) error {
+	if len(q.orderBy) == 0 {
 		return nil
 	}
 
 	stmt.WriteString(" order by ")
-	result := make([]string, 0, len(s.orderBy))
+	result := make([]string, 0, len(q.orderBy))
 
-	for _, o := range s.orderBy {
-		result = append(result, s.replacer.Replace(o))
+	for _, o := range q.orderBy {
+		result = append(result, q.replacer.Replace(o))
 	}
 
 	stmt.WriteString(strings.Join(result, ", "))
 	return nil
 }
 
-func (s *googleSheetSelectStmt) writeOffset(stmt *strings.Builder) error {
-	if s.offset == 0 {
+func (q *queryBuilder) writeOffset(stmt *strings.Builder) error {
+	if q.offset == 0 {
 		return nil
 	}
 
 	stmt.WriteString(" offset ")
-	stmt.WriteString(strconv.FormatInt(int64(s.offset), 10))
+	stmt.WriteString(strconv.FormatInt(int64(q.offset), 10))
 	return nil
 }
 
-func (s *googleSheetSelectStmt) writeLimit(stmt *strings.Builder) error {
-	if s.limit == 0 {
+func (q *queryBuilder) writeLimit(stmt *strings.Builder) error {
+	if q.limit == 0 {
 		return nil
 	}
 
 	stmt.WriteString(" limit ")
-	stmt.WriteString(strconv.FormatInt(int64(s.limit), 10))
+	stmt.WriteString(strconv.FormatInt(int64(q.limit), 10))
 	return nil
+}
+
+func newQueryBuilder(colReplacements map[string]string, colSelected []string) *queryBuilder {
+	replacements := make([]string, 0, 2*len(colReplacements))
+	for col, repl := range colReplacements {
+		replacements = append(replacements, col, repl)
+	}
+
+	return &queryBuilder{replacer: strings.NewReplacer(replacements...), columns: colSelected}
+}
+
+type googleSheetSelectStmt struct {
+	store        *GoogleSheetRowStore
+	columns      []string
+	queryBuilder *queryBuilder
+	output       interface{}
+}
+
+func (s *googleSheetSelectStmt) Where(condition string, args ...interface{}) *googleSheetSelectStmt {
+	s.queryBuilder.Where(condition, args...)
+	return s
+}
+
+func (s *googleSheetSelectStmt) OrderBy(ordering []ColumnOrderBy) *googleSheetSelectStmt {
+	s.queryBuilder.OrderBy(ordering)
+	return s
+}
+
+func (s *googleSheetSelectStmt) Limit(limit uint64) *googleSheetSelectStmt {
+	s.queryBuilder.Limit(limit)
+	return s
+}
+
+func (s *googleSheetSelectStmt) Offset(offset uint64) *googleSheetSelectStmt {
+	s.queryBuilder.Offset(offset)
+	return s
+}
+
+func (s *googleSheetSelectStmt) Exec(ctx context.Context) error {
+	if err := s.ensureOutputSlice(); err != nil {
+		return err
+	}
+
+	stmt, err := s.queryBuilder.Generate()
+	if err != nil {
+		return err
+	}
+
+	result, err := s.store.wrapper.QueryRows(
+		ctx,
+		s.store.spreadsheetID,
+		s.store.sheetName,
+		stmt,
+		true,
+	)
+	if err != nil {
+		return err
+	}
+
+	m := s.buildQueryResultMap(result)
+	return mapstructureDecode(m, s.output)
 }
 
 func (s *googleSheetSelectStmt) buildQueryResultMap(original sheets.QueryRowsResult) []map[string]interface{} {
@@ -258,55 +264,44 @@ func (s *googleSheetSelectStmt) buildQueryResultMap(original sheets.QueryRowsRes
 	return result
 }
 
-func newGoogleSheetSelectStmt(store *GoogleSheetRowStore, output interface{}, columns []string) *googleSheetSelectStmt {
-	replacements := make([]string, 0)
-	for col, val := range store.colsMapping {
-		replacements = append(replacements, col, val.name)
+func (s *googleSheetSelectStmt) ensureOutputSlice() error {
+	// Passing an uninitialised slice will not compare to nil due to this: https://yourbasic.org/golang/gotcha-why-nil-error-not-equal-nil/
+	// Only if passing an untyped `nil` will compare to the `nil` in the line below.
+	// Observations as below:
+	//
+	// var o []int
+	// o == nil --> this is true because the compiler knows `o` is nil and of type `[]int`, so the `nil` on the right side is of the same `[]int` type.
+	//
+	// var x interface{} = o
+	// x == nil --> this is false because `o` has been boxed by `x` and the `nil` on the right side is of type `nil` (i.e. nil value of nil type).
+	// x == []int(nil) --> this is true because the `nil` has been casted explicitly to `nil` of type `[]int`.
+	if s.output == nil {
+		return errors.New("select statement output cannot be empty or nil")
 	}
-	return newGoogleSheetSelectStmtWithReplacer(store, output, columns, strings.NewReplacer(replacements...))
+
+	t := reflect.TypeOf(s.output)
+	if t.Kind() != reflect.Ptr {
+		return errors.New("select statement output must be a pointer to a slice of something")
+	}
+
+	elem := t.Elem()
+	if elem.Kind() != reflect.Slice {
+		return fmt.Errorf("select statement output must be a pointer to a slice of something; current output type: %s", t.Kind().String())
+	}
+
+	return nil
 }
 
-func newGoogleSheetSelectStmtWithReplacer(
-	store *GoogleSheetRowStore,
-	output interface{},
-	columns []string,
-	replacer *strings.Replacer,
-) *googleSheetSelectStmt {
+func newGoogleSheetSelectStmt(store *GoogleSheetRowStore, output interface{}, columns []string) *googleSheetSelectStmt {
 	if len(columns) == 0 {
 		columns = store.config.Columns
 	}
 
 	return &googleSheetSelectStmt{
-		store:    store,
-		replacer: replacer,
-		columns:  columns,
-		output:   output,
-	}
-}
-
-type googleSheetRawInsertStmt struct {
-	store *GoogleSheetRowStore
-	rows  [][]interface{}
-}
-
-func (s *googleSheetRawInsertStmt) Exec(ctx context.Context) error {
-	if len(s.rows) == 0 {
-		return nil
-	}
-
-	_, err := s.store.wrapper.OverwriteRows(
-		ctx,
-		s.store.spreadsheetID,
-		getA1Range(s.store.sheetName, defaultRowFullTableRange),
-		s.rows,
-	)
-	return err
-}
-
-func newGoogleSheetRawInsertStmt(store *GoogleSheetRowStore, rows [][]interface{}) *googleSheetRawInsertStmt {
-	return &googleSheetRawInsertStmt{
-		store: store,
-		rows:  rows,
+		store:        store,
+		columns:      columns,
+		queryBuilder: newQueryBuilder(store.colsMapping.NameMap(), columns),
+		output:       output,
 	}
 }
 
@@ -334,6 +329,8 @@ func (s *googleSheetInsertStmt) convertRowToSlice(row interface{}) ([]interface{
 	}
 
 	result := make([]interface{}, len(s.store.colsMapping))
+	result[0] = rowIdxFormula
+
 	for key, value := range output {
 		if colIdx, ok := s.store.colsMapping[key]; ok {
 			result[colIdx.idx] = value
@@ -374,22 +371,24 @@ func newGoogleSheetInsertStmt(store *GoogleSheetRowStore, rows []interface{}) *g
 }
 
 type googleSheetUpdateStmt struct {
-	store      *GoogleSheetRowStore
-	colToValue map[string]interface{}
-	where      string
-	whereArgs  []interface{}
+	store        *GoogleSheetRowStore
+	colToValue   map[string]interface{}
+	queryBuilder *queryBuilder
 }
 
 func (s *googleSheetUpdateStmt) Where(condition string, args ...interface{}) *googleSheetUpdateStmt {
-	s.where = condition
-	s.whereArgs = args
+	// The first condition `_ts IS NOT NULL` is necessary to ensure we are just updating rows that are non-empty.
+	// This is required for UPDATE without WHERE clause (otherwise it will see every row as update target).
+	if condition == "" {
+		s.queryBuilder.Where(fmt.Sprintf(rowUpdateModifyWhereEmptyTemplate, rowIdxCol), args...)
+	} else {
+		s.queryBuilder.Where(fmt.Sprintf(rowUpdateModifyWhereNonEmptyTemplate, rowIdxCol, condition), args...)
+	}
 	return s
 }
 
 func (s *googleSheetUpdateStmt) Exec(ctx context.Context) error {
-	// The first _ts IS NOT NULL is necessary to ensure we are just updating rows that are non-empty.
-	// This is required for UPDATE without WHERE clause (otherwise it will see every row as update target).
-	selectStmt, err := generateSelectQuery(s.store, s.generateWhere(), s.whereArgs)
+	selectStmt, err := s.queryBuilder.Generate()
 	if err != nil {
 		return err
 	}
@@ -411,14 +410,7 @@ func (s *googleSheetUpdateStmt) Exec(ctx context.Context) error {
 	return err
 }
 
-func (s *googleSheetUpdateStmt) generateWhere() string {
-	if s.where == "" {
-		return fmt.Sprintf(rowUpdateModifyWhereEmptyTemplate, rowTsCol)
-	}
-	return fmt.Sprintf(rowUpdateModifyWhereNonEmptyTemplate, rowTsCol, s.where)
-}
-
-func (s *googleSheetUpdateStmt) generateBatchUpdateRequests(rowIndices []int) ([]sheets.BatchUpdateRowsRequest, error) {
+func (s *googleSheetUpdateStmt) generateBatchUpdateRequests(rowIndices []int64) ([]sheets.BatchUpdateRowsRequest, error) {
 	requests := make([]sheets.BatchUpdateRowsRequest, 0)
 
 	for col, value := range s.colToValue {
@@ -428,7 +420,7 @@ func (s *googleSheetUpdateStmt) generateBatchUpdateRequests(rowIndices []int) ([
 		}
 
 		for _, rowIdx := range rowIndices {
-			a1Range := colIdx.name + strconv.FormatInt(int64(rowIdx), 10)
+			a1Range := colIdx.name + strconv.FormatInt(rowIdx, 10)
 			requests = append(requests, sheets.BatchUpdateRowsRequest{
 				A1Range: getA1Range(s.store.sheetName, a1Range),
 				Values:  [][]interface{}{{value}},
@@ -441,25 +433,24 @@ func (s *googleSheetUpdateStmt) generateBatchUpdateRequests(rowIndices []int) ([
 
 func newGoogleSheetUpdateStmt(store *GoogleSheetRowStore, colToValue map[string]interface{}) *googleSheetUpdateStmt {
 	return &googleSheetUpdateStmt{
-		store:      store,
-		colToValue: colToValue,
+		store:        store,
+		colToValue:   colToValue,
+		queryBuilder: newQueryBuilder(store.colsMapping.NameMap(), []string{rowIdxCol}),
 	}
 }
 
 type googleSheetDeleteStmt struct {
-	store     *GoogleSheetRowStore
-	where     string
-	whereArgs []interface{}
+	store        *GoogleSheetRowStore
+	queryBuilder *queryBuilder
 }
 
 func (s *googleSheetDeleteStmt) Where(condition string, args ...interface{}) *googleSheetDeleteStmt {
-	s.where = condition
-	s.whereArgs = args
+	s.queryBuilder.Where(condition, args...)
 	return s
 }
 
 func (s *googleSheetDeleteStmt) Exec(ctx context.Context) error {
-	selectStmt, err := generateSelectQuery(s.store, s.where, s.whereArgs)
+	selectStmt, err := s.queryBuilder.Generate()
 	if err != nil {
 		return err
 	}
@@ -477,65 +468,88 @@ func (s *googleSheetDeleteStmt) Exec(ctx context.Context) error {
 }
 
 func newGoogleSheetDeleteStmt(store *GoogleSheetRowStore) *googleSheetDeleteStmt {
-	return &googleSheetDeleteStmt{store: store}
+	return &googleSheetDeleteStmt{
+		store:        store,
+		queryBuilder: newQueryBuilder(store.colsMapping.ColIdxNameMap(), []string{lastColIdxName}),
+	}
 }
 
-func generateSelectQuery(store *GoogleSheetRowStore, where string, whereArgs []interface{}) (string, error) {
-	replacements := make([]string, 0)
-	for col, val := range store.colsMapping {
-		replacements = append(replacements, col, "Col"+strconv.FormatInt(int64(val.idx+1), 10))
+type googleSheetCountStmt struct {
+	store        *GoogleSheetRowStore
+	queryBuilder *queryBuilder
+}
+
+func (s *googleSheetCountStmt) Where(condition string, args ...interface{}) *googleSheetCountStmt {
+	s.queryBuilder.Where(condition, args...)
+	return s
+}
+
+func (s *googleSheetCountStmt) Exec(ctx context.Context) (uint64, error) {
+	selectStmt, err := s.queryBuilder.Generate()
+	if err != nil {
+		return 0, err
 	}
 
-	col := []string{"Col" + strconv.FormatInt(int64(maxColumn+1), 10)}
-	return newGoogleSheetSelectStmtWithReplacer(store, nil, col, strings.NewReplacer(replacements...)).
-		Where(where, whereArgs...).
-		generateSelect()
-}
-
-func getRowIndices(ctx context.Context, store *GoogleSheetRowStore, selectStmt string) ([]int, error) {
 	formula := fmt.Sprintf(
-		rowGetIndicesQueryTemplate,
-		getA1Range(store.sheetName, defaultRowFullTableRange),
-		getA1Range(store.sheetName, defaultRowFullTableRange),
+		rwoCountQueryTemplate,
+		getA1Range(s.store.sheetName, defaultRowFullTableRange),
 		selectStmt,
 	)
 
-	result, err := store.wrapper.UpdateRows(
+	result, err := s.store.wrapper.UpdateRows(
 		ctx,
-		store.spreadsheetID,
-		store.scratchpadLocation.Original,
+		s.store.spreadsheetID,
+		s.store.scratchpadLocation.Original,
 		[][]interface{}{{formula}},
 	)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	if len(result.UpdatedValues) == 0 || len(result.UpdatedValues[0]) == 0 {
-		return nil, fmt.Errorf("error retrieving row indices to delete: %+v", result)
+		return 0, fmt.Errorf("error retrieving row indices to delete: %+v", result)
 	}
 
 	raw := result.UpdatedValues[0][0].(string)
-	if raw == naValue {
-		return []int{}, nil
+	if raw == naValue || raw == errorValue || raw == "" {
+		return 0, fmt.Errorf("error retrieving row indices to delete: %s", raw)
 	}
-	if raw == errorValue || raw == "" {
-		return nil, fmt.Errorf("error retrieving row indices to delete: %s", raw)
+	return strconv.ParseUint(raw, 10, 64)
+}
+
+func newGoogleSheetCountStmt(store *GoogleSheetRowStore) *googleSheetCountStmt {
+	return &googleSheetCountStmt{
+		store:        store,
+		queryBuilder: newQueryBuilder(store.colsMapping.NameMap(), []string{rowIdxCol}),
+	}
+}
+
+func getRowIndices(ctx context.Context, store *GoogleSheetRowStore, selectStmt string) ([]int64, error) {
+	result, err := store.wrapper.QueryRows(ctx, store.spreadsheetID, store.sheetName, selectStmt, true)
+	if err != nil {
+		return nil, err
+	}
+	if len(result.Rows) == 0 {
+		return nil, nil
 	}
 
-	rowIndicesStr := strings.Split(raw, ",")
-	rowIndices := make([]int, len(rowIndicesStr))
-
-	for i := range rowIndicesStr {
-		idx, err := strconv.ParseInt(rowIndicesStr[i], 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error converting row indices to delete: %w", err)
+	rowIndices := make([]int64, 0)
+	for _, row := range result.Rows {
+		if len(row) != 1 {
+			return nil, fmt.Errorf("error retrieving row indices: %+v", result)
 		}
-		rowIndices[i] = int(idx)
+
+		idx, ok := row[0].(int64)
+		if !ok {
+			return nil, fmt.Errorf("error converting row indices, value: %+v", row[0])
+		}
+
+		rowIndices = append(rowIndices, idx)
 	}
 
 	return rowIndices, nil
 }
 
-func generateRowA1Ranges(sheetName string, indices []int) []string {
+func generateRowA1Ranges(sheetName string, indices []int64) []string {
 	locations := make([]string, len(indices))
 	for i := range indices {
 		locations[i] = getA1Range(

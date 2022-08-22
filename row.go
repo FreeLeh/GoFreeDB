@@ -29,21 +29,12 @@ type GoogleSheetRowStore struct {
 	sheetName           string
 	scratchpadSheetName string
 	scratchpadLocation  sheets.A1Range
-	colsMapping         map[string]colIdx
+	colsMapping         colsMapping
 	config              GoogleSheetRowStoreConfig
 }
 
 func (s *GoogleSheetRowStore) Select(output interface{}, columns ...string) *googleSheetSelectStmt {
 	return newGoogleSheetSelectStmt(s, output, columns)
-}
-
-// RawInsert inserts all the values in `rows` into the table.
-// Note that each value in the `interface{}` is going to be JSON marshalled.
-func (s *GoogleSheetRowStore) RawInsert(rows ...[]interface{}) *googleSheetRawInsertStmt {
-	for i := range rows {
-		rows[i] = append(rows[i], currentTimeMs())
-	}
-	return newGoogleSheetRawInsertStmt(s, rows)
 }
 
 // Insert will try to infer what is the type of each row and perform certain logic based on the type.
@@ -67,6 +58,10 @@ func (s *GoogleSheetRowStore) Update(colToValue map[string]interface{}) *googleS
 
 func (s *GoogleSheetRowStore) Delete() *googleSheetDeleteStmt {
 	return newGoogleSheetDeleteStmt(s)
+}
+
+func (s *GoogleSheetRowStore) Count() *googleSheetCountStmt {
+	return newGoogleSheetCountStmt(s)
 }
 
 func (s *GoogleSheetRowStore) Close(ctx context.Context) error {
@@ -149,6 +144,10 @@ func NewGoogleSheetRowStore(
 // Currently, we use this for detecting which rows are really empty for UPDATE without WHERE clause.
 // Otherwise, it will always update all rows (instead of the non-empty rows only).
 func injectTimestampCol(config GoogleSheetRowStoreConfig) GoogleSheetRowStoreConfig {
-	config.Columns = append(config.Columns, rowTsCol)
+	newCols := make([]string, 0, len(config.Columns)+1)
+	newCols = append(newCols, rowIdxCol)
+	newCols = append(newCols, config.Columns...)
+	config.Columns = newCols
+
 	return config
 }

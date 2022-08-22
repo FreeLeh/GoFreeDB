@@ -44,9 +44,9 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Empty(t, out)
 
-	err = db.RawInsert(
-		[]interface{}{"name1", 10, "1-1-1999"},
-		[]interface{}{"name2", 11, "1-1-2000"},
+	err = db.Insert(
+		testPerson{"name1", 10, "1-1-1999"},
+		testPerson{"name2", 11, "1-1-2000"},
 	).Exec(context.Background())
 	assert.Nil(t, err)
 
@@ -80,6 +80,17 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, expected, out)
 
+	count, err := db.Count().
+		Where("name = ? OR name = ?", "name2", "name3").
+		Exec(context.Background())
+	assert.Nil(t, err)
+	assert.Equal(t, uint64(2), count)
+
 	err = db.Delete().Where("name = ?", "name4").Exec(context.Background())
 	assert.Nil(t, err)
+}
+
+func TestInjectTimestampCol(t *testing.T) {
+	result := injectTimestampCol(GoogleSheetRowStoreConfig{Columns: []string{"col1", "col2"}})
+	assert.Equal(t, GoogleSheetRowStoreConfig{Columns: []string{rowIdxCol, "col1", "col2"}}, result)
 }
