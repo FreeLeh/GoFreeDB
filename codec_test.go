@@ -33,7 +33,7 @@ func TestBasicCodecEncode(t *testing.T) {
 			expected: "!" + naValue,
 		},
 	}
-	codec := &BasicCodec{}
+	codec := &basicCodec{}
 
 	for _, c := range tc {
 		t.Run(c.name, func(t *testing.T) {
@@ -82,7 +82,7 @@ func TestBasicCodecDecode(t *testing.T) {
 			hasErr:   false,
 		},
 	}
-	codec := &BasicCodec{}
+	codec := &basicCodec{}
 
 	for _, c := range tc {
 		t.Run(c.name, func(t *testing.T) {
