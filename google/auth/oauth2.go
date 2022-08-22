@@ -22,18 +22,38 @@ const (
 	stateLength  = 32
 )
 
+// OAuth2Config defines a list of configurations that can be used to customise how the Google OAuth2 flow works.
 type OAuth2Config struct {
+	// HTTPClient allows the client to customise the HTTP client used to perform the REST API calls.
+	// This will be useful if you want to have a more granular control over the HTTP client (e.g. using a connection pool).
 	HTTPClient *http.Client
 }
 
+// OAuth2 takes in OAuth2 relevant information and sets up *http.Client that can be used to access
+// Google APIs seamlessly. Authentications will be handled automatically, including refreshing the access token
+// when necessary.
 type OAuth2 struct {
 	googleAuthClient *http.Client
 }
 
+// HTTPClient returns a Google OAuth2 authenticated *http.Client that can be used to access Google APIs.
 func (o *OAuth2) HTTPClient() *http.Client {
 	return o.googleAuthClient
 }
 
+// NewOAuth2FromFile creates an OAuth2 instance by reading the OAuth2 related information from a secret file.
+//
+// The "secretFilePath" is referring to the OAuth2 credentials JSON file that can be obtained by
+// creating a new OAuth2 credentials in https://console.cloud.google.com/apis/credentials.
+// You can put any link for the redirection URL field.
+//
+// The "credsFilePath" is referring to a file where the generated access and refresh token will be cached.
+// This file will be created automatically once the OAuth2 authentication is successful.
+//
+// The "scopes" tells Google what your application can do to your spreadsheets.
+//
+// Note that since this is an OAuth2 server flow, human interaction will be needed for the very first authentication.
+// During the OAuth2 flow, you will be asked to click a generated URL in the terminal.
 func NewOAuth2FromFile(secretFilePath string, credsFilePath string, scopes Scopes, config OAuth2Config) (*OAuth2, error) {
 	rawAuthConfig, err := ioutil.ReadFile(secretFilePath)
 	if err != nil {

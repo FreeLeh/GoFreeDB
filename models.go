@@ -9,17 +9,16 @@ import (
 	"github.com/FreeLeh/GoFreeLeh/internal/google/sheets"
 )
 
+// KVMode defines the mode of the key value store.
+// For more details, please read the README file.
 type KVMode int
-
-type OrderBy string
 
 const (
 	KVModeDefault    KVMode = 0
 	KVModeAppendOnly KVMode = 1
+)
 
-	OrderByAsc  OrderBy = "ASC"
-	OrderByDesc OrderBy = "DESC"
-
+const (
 	// Currently limited to 26.
 	// Otherwise, the sheet creation must extend the column as well to make the rowGetIndicesQueryTemplate formula works.
 	// TODO(edocsss): add an option to extend the number of columns.
@@ -47,9 +46,12 @@ const (
 	rowIdxFormula = "=ROW()"
 )
 
+// ErrKeyNotFound is returned only for the key-value store and when the key does not exist.
 var (
 	ErrKeyNotFound = errors.New("error key not found")
+)
 
+var (
 	defaultRowHeaderRange    = "A1:" + generateColumnName(maxColumn-1) + "1"
 	defaultRowFullTableRange = "A2:" + generateColumnName(maxColumn-1)
 	rowDeleteRangeTemplate   = "A%d:" + generateColumnName(maxColumn-1) + "%d"
@@ -59,6 +61,8 @@ var (
 	googleSheetSelectStmtStringKeyword = regexp.MustCompile("^(date|datetime|timeofday)")
 )
 
+// Codec is an interface for encoding and decoding the data provided by the client.
+// At the moment, only key-value store requires data encoding.
 type Codec interface {
 	Encode(value []byte) (string, error)
 	Decode(value string) ([]byte, error)
@@ -100,6 +104,16 @@ func (m colsMapping) ColIdxNameMap() map[string]string {
 	return result
 }
 
+// OrderBy defines the type of column ordering used for GoogleSheetRowStore.Select().
+type OrderBy string
+
+const (
+	OrderByAsc  OrderBy = "ASC"
+	OrderByDesc OrderBy = "DESC"
+)
+
+// ColumnOrderBy defines what ordering is required for a particular column.
+// This is used for GoogleSheetRowStore.Select().
 type ColumnOrderBy struct {
 	Column  string
 	OrderBy OrderBy

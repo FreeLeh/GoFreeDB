@@ -513,7 +513,7 @@ auth, err := auth.NewServiceFromFile(
 
 **Explanations:**
 
-1. The `service_account_json` can be obtained by following the steps in this [Google OAuth2 page](https://developers.google.com/identity/protocols/oauth2/service-account#creatinganaccount). The JSON file of interest is **the downloaded file after creating a new service account key**.
+1. The `service_account_json` can be obtained by following the steps in this [Google Service Account page](https://developers.google.com/identity/protocols/oauth2/service-account#creatinganaccount). The JSON file of interest is **the downloaded file after creating a new service account key**.
 2. The `scopes` tells Google what your application can do to your spreadsheets (`auth.GoogleSheetsReadOnly`, `auth.GoogleSheetsWriteOnly`, or `auth.GoogleSheetsReadWrite`).
 
 If you want to understand the details, you can start from this [Google Service Account page](https://developers.google.com/identity/protocols/oauth2/service-account).
