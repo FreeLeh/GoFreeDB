@@ -3,6 +3,7 @@ package freeleh
 import (
 	"context"
 	"errors"
+	"github.com/FreeLeh/GoFreeLeh/google/auth"
 	"regexp"
 	"strconv"
 
@@ -49,6 +50,11 @@ const (
 // ErrKeyNotFound is returned only for the key-value store and when the key does not exist.
 var (
 	ErrKeyNotFound = errors.New("error key not found")
+)
+
+// FreeDBGoogleAuthScopes specifies the list of Google Auth scopes required to run FreeDB implementations properly.
+var (
+	FreeDBGoogleAuthScopes = auth.GoogleSheetsReadWrite
 )
 
 var (

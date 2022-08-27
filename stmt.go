@@ -549,36 +549,24 @@ func (s *GoogleSheetCountStmt) Exec(ctx context.Context) (uint64, error) {
 		return 0, err
 	}
 
-	formula := fmt.Sprintf(
-		rwoCountQueryTemplate,
-		getA1Range(s.store.sheetName, defaultRowFullTableRange),
-		selectStmt,
-	)
-
-	result, err := s.store.wrapper.UpdateRows(
-		ctx,
-		s.store.spreadsheetID,
-		s.store.scratchpadLocation.Original,
-		[][]interface{}{{formula}},
-	)
+	result, err := s.store.wrapper.QueryRows(ctx, s.store.spreadsheetID, s.store.sheetName, selectStmt, true)
 	if err != nil {
 		return 0, err
 	}
-	if len(result.UpdatedValues) == 0 || len(result.UpdatedValues[0]) == 0 {
-		return 0, fmt.Errorf("error retrieving row indices to delete: %+v", result)
+
+	if len(result.Rows) != 1 || len(result.Rows[0]) != 1 {
+		return 0, errors.New("")
 	}
 
-	raw := result.UpdatedValues[0][0].(string)
-	if raw == naValue || raw == errorValue || raw == "" {
-		return 0, fmt.Errorf("error retrieving row indices to delete: %s", raw)
-	}
-	return strconv.ParseUint(raw, 10, 64)
+	count := result.Rows[0][0].(int64)
+	return uint64(count), nil
 }
 
 func newGoogleSheetCountStmt(store *GoogleSheetRowStore) *GoogleSheetCountStmt {
+	countClause := fmt.Sprintf("COUNT(%s)", rowIdxCol)
 	return &GoogleSheetCountStmt{
 		store:        store,
-		queryBuilder: newQueryBuilder(store.colsMapping.NameMap(), []string{rowIdxCol}),
+		queryBuilder: newQueryBuilder(store.colsMapping.NameMap(), []string{countClause}),
 	}
 }
 

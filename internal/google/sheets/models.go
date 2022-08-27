@@ -2,7 +2,6 @@ package sheets
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 )
 
@@ -134,12 +133,14 @@ func (r rawQueryRowsResult) convertRawValue(cellIdx int, cell rawQueryRowsResult
 	col := r.Table.Cols[cellIdx]
 	switch col.Type {
 	case "boolean":
-		return cell.Raw == "true", nil
+		return strings.ToLower(cell.Raw) == "true", nil
 	case "number":
 		if strings.Contains(cell.Raw, ".") {
-			return strconv.ParseFloat(cell.Raw, 64)
+			return cell.Value, nil
+		} else {
+			val := cell.Value.(float64)
+			return int64(val), nil
 		}
-		return strconv.ParseInt(cell.Raw, 10, 64)
 	case "string":
 		// `string` type does not have the raw value
 		return cell.Value, nil
