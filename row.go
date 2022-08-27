@@ -30,13 +30,11 @@ func (c GoogleSheetRowStoreConfig) validate() error {
 
 // GoogleSheetRowStore encapsulates row store functionality on top of a Google Sheet.
 type GoogleSheetRowStore struct {
-	wrapper             sheetsWrapper
-	spreadsheetID       string
-	sheetName           string
-	scratchpadSheetName string
-	scratchpadLocation  sheets.A1Range
-	colsMapping         colsMapping
-	config              GoogleSheetRowStoreConfig
+	wrapper       sheetsWrapper
+	spreadsheetID string
+	sheetName     string
+	colsMapping   colsMapping
+	config        GoogleSheetRowStoreConfig
 }
 
 // Select specifies which columns to return from the Google Sheet when querying and the output variable
@@ -104,10 +102,9 @@ func (s *GoogleSheetRowStore) Count() *GoogleSheetCountStmt {
 	return newGoogleSheetCountStmt(s)
 }
 
-// Close cleans up all held resources like the scratchpad cell booked for this specific GoogleSheetRowStore instance.
-func (s *GoogleSheetRowStore) Close(ctx context.Context) error {
-	_, err := s.wrapper.Clear(ctx, s.spreadsheetID, []string{s.scratchpadLocation.Original})
-	return err
+// Close cleans up all held resources if any.
+func (s *GoogleSheetRowStore) Close(_ context.Context) error {
+	return nil
 }
 
 func (s *GoogleSheetRowStore) ensureHeaders() error {
@@ -156,30 +153,19 @@ func NewGoogleSheetRowStore(
 	}
 
 	config = injectTimestampCol(config)
-	scratchpadSheetName := sheetName + scratchpadSheetNameSuffix
 
 	store := &GoogleSheetRowStore{
-		wrapper:             wrapper,
-		spreadsheetID:       spreadsheetID,
-		sheetName:           sheetName,
-		scratchpadSheetName: scratchpadSheetName,
-		colsMapping:         generateColumnMapping(config.Columns),
-		config:              config,
+		wrapper:       wrapper,
+		spreadsheetID: spreadsheetID,
+		sheetName:     sheetName,
+		colsMapping:   generateColumnMapping(config.Columns),
+		config:        config,
 	}
 
 	_ = ensureSheets(store.wrapper, store.spreadsheetID, store.sheetName)
-	_ = ensureSheets(store.wrapper, store.spreadsheetID, store.scratchpadSheetName)
-
 	if err := store.ensureHeaders(); err != nil {
 		panic(fmt.Errorf("error checking headers: %w", err))
 	}
-
-	scratchpadLocation, err := findScratchpadLocation(store.wrapper, store.spreadsheetID, store.scratchpadSheetName)
-	if err != nil {
-		panic(fmt.Errorf("error finding a scratchpad location in sheet %s: %w", store.scratchpadSheetName, err))
-	}
-	store.scratchpadLocation = scratchpadLocation
-
 	return store
 }
 

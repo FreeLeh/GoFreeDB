@@ -34,7 +34,7 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 		GoogleSheetRowStoreConfig{Columns: []string{"name", "age", "dob"}},
 	)
 	defer func() {
-		deleteSheet(t, db.wrapper, spreadsheetID, []string{db.sheetName, db.scratchpadSheetName})
+		deleteSheet(t, db.wrapper, spreadsheetID, []string{db.sheetName})
 		_ = db.Close(context.Background())
 	}()
 
