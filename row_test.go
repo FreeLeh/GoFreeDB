@@ -1,11 +1,11 @@
-package freeleh
+package freedb
 
 import (
 	"context"
 	"fmt"
 	"testing"
 
-	"github.com/FreeLeh/GoFreeLeh/google/auth"
+	"github.com/FreeLeh/GoFreeDB/google/auth"
 	"github.com/stretchr/testify/assert"
 )
 

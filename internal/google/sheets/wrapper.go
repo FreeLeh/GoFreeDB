@@ -232,7 +232,7 @@ func (w *Wrapper) execQueryRows(
 ) (rawQueryRowsResult, error) {
 	params := url.Values{}
 	params.Add("sheet", sheetName)
-	params.Add("tqx", "responseHandler:freeleh")
+	params.Add("tqx", "responseHandler:freedb")
 	params.Add("tq", query)
 
 	header := 0

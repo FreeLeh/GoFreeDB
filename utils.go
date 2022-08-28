@@ -1,10 +1,10 @@
-package freeleh
+package freedb
 
 import (
 	"context"
 	"time"
 
-	"github.com/FreeLeh/GoFreeLeh/internal/google/sheets"
+	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
 	"github.com/mitchellh/mapstructure"
 )
 

@@ -1,4 +1,4 @@
-package freeleh
+package freedb
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/FreeLeh/GoFreeLeh/internal/google/sheets"
+	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
 )
 
 type queryBuilder struct {
@@ -413,7 +413,7 @@ type GoogleSheetUpdateStmt struct {
 // It works just like the GoogleSheetSelectStmt.Where() method.
 // Please read GoogleSheetSelectStmt.Where() for more details.
 func (s *GoogleSheetUpdateStmt) Where(condition string, args ...interface{}) *GoogleSheetUpdateStmt {
-	// The first condition `_ts IS NOT NULL` is necessary to ensure we are just updating rows that are non-empty.
+	// The first condition `_rid IS NOT NULL` is necessary to ensure we are just updating rows that are non-empty.
 	// This is required for UPDATE without WHERE clause (otherwise it will see every row as update target).
 	if condition == "" {
 		s.queryBuilder.Where(fmt.Sprintf(rowUpdateModifyWhereEmptyTemplate, rowIdxCol), args...)

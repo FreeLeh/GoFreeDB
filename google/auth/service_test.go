@@ -3,7 +3,7 @@ package auth
 import (
 	"testing"
 
-	"github.com/FreeLeh/GoFreeLeh/internal/google/fixtures"
+	"github.com/FreeLeh/GoFreeDB/internal/google/fixtures"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/oauth2"
 )

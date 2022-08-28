@@ -1,11 +1,11 @@
-package freeleh
+package freedb
 
 import (
 	"context"
 	"errors"
 	"testing"
 
-	"github.com/FreeLeh/GoFreeLeh/internal/google/sheets"
+	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
 	"github.com/stretchr/testify/assert"
 )
 

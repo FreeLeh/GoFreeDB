@@ -1,13 +1,14 @@
-package freeleh
+package freedb
 
 import (
 	"context"
 	"errors"
-	"github.com/FreeLeh/GoFreeLeh/google/auth"
 	"regexp"
 	"strconv"
 
-	"github.com/FreeLeh/GoFreeLeh/internal/google/sheets"
+	"github.com/FreeLeh/GoFreeDB/google/auth"
+
+	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
 )
 
 // KVMode defines the mode of the key value store.

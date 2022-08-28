@@ -1,11 +1,11 @@
-package freeleh
+package freedb
 
 import (
 	"context"
 	"errors"
 	"fmt"
 
-	"github.com/FreeLeh/GoFreeLeh/internal/google/sheets"
+	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
 )
 
 // GoogleSheetKVStoreConfig defines a list of configurations that can be used to customise how the GoogleSheetKVStore works.

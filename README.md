@@ -1,6 +1,6 @@
-# GoFreeLeh
+# GoFreeDB
 
-![Unit Test](https://github.com/FreeLeh/GoFreeLeh/actions/workflows/unit_test.yml/badge.svg)
+![Unit Test](https://github.com/FreeLeh/GoFreeDB/actions/workflows/unit_test.yml/badge.svg)
 
 <div>
     <h2 align="center">
@@ -11,13 +11,13 @@
     </h2>
 </div>
 
-`GoFreeLeh` is a Golang library providing common and familiar interfaces on top of common free services we have access to.
+`GoFreeDB` is a Golang library providing common and familiar interfaces on top of common free services we have access to.
 
 ## Why do you need this library?
 
 Our main goal is to make developers who want to **just start their small personal projects so much easier without thinking too much about the setup required to get started**. We can leverage a bunch of well known free services available to us like Google Sheets and Telegram. We want to use these services as our **easy-to-setup and "managed" database or even a message queue**.
 
-`GoFreeLeh` is just the beginning. It is very likely we will explore other languages (e.g. Java, Kotlin, Swift, etc.) to support in the future.
+`GoFreeDB` is just the beginning. It is very likely we will explore other languages (e.g. Java, Kotlin, Swift, etc.) to support in the future.
 
 > Check out [PyFreeLeh](https://github.com/FreeLeh/PyFreeLeh) for the Python version!
 
@@ -34,7 +34,7 @@ There are other ideas we have in our backlog:
 2. A simple message queue on top of Telegram Channels.
 
 We are quite open to knowing any other free services we can leverage on.<br>
-Please suggest your ideas in the [issues](https://github.com/FreeLeh/GoFreeLeh/issues) page!
+Please suggest your ideas in the [issues](https://github.com/FreeLeh/GoFreeDB/issues) page!
 
 ## What can I do with these interfaces/abstractions?
 
@@ -76,7 +76,7 @@ Here are a few ideas we thought of:
 # Installation
 
 ```
-go get github.com/FreeLeh/GoFreeLeh
+go get github.com/FreeLeh/GoFreeDB
 ```
 
 # Key Value Store
@@ -100,11 +100,11 @@ auth, err := auth.NewOAuth2FromFile(
 )
 
 // Below are the same regardless of the auth client chosen above.
-kv := freeleh.NewGoogleSheetKVStore(
+kv := freedb.NewGoogleSheetKVStore(
     auth,
     "<spreadsheet_id>",
     "<sheet_name>",
-    freeleh.GoogleSheetKVStoreConfig{Mode: freeleh.KVSetModeAppendOnly},
+    freedb.GoogleSheetKVStoreConfig{Mode: freedb.KVSetModeAppendOnly},
 )
 defer kv.Close(context.Background())
 
@@ -155,10 +155,10 @@ There are 2 different modes supported:
 
 ```go
 // Default mode
-kv := freeleh.NewGoogleSheetKVStore(auth, "<spreadsheet_id>", "<sheet_name>", freeleh.GoogleSheetKVStoreConfig{Mode: freeleh.KVModeDefault})
+kv := freedb.NewGoogleSheetKVStore(auth, "<spreadsheet_id>", "<sheet_name>", freedb.GoogleSheetKVStoreConfig{Mode: freedb.KVModeDefault})
 
 // Append only mode
-kv := freeleh.NewGoogleSheetKVStore(auth, "<spreadsheet_id>", "<sheet_name>", freeleh.GoogleSheetKVStoreConfig{Mode: freeleh.KVModeAppendOnly})
+kv := freedb.NewGoogleSheetKVStore(auth, "<spreadsheet_id>", "<sheet_name>", freedb.GoogleSheetKVStoreConfig{Mode: freedb.KVModeAppendOnly})
 ```
 
 #### Default Mode
@@ -250,11 +250,11 @@ auth, err := auth.NewOAuth2FromFile(
 )
 
 // Below are the same regardless of the auth client chosen above.
-store := freeleh.NewGoogleSheetsRowStore(
+store := freedb.NewGoogleSheetsRowStore(
     auth,
     "<spreadsheet_id>",
     "<sheet_name>",
-    freeleh.GoogleSheetRowStoreConfig{Columns: []string{"name", "age"}},
+    freedb.GoogleSheetRowStoreConfig{Columns: []string{"name", "age"}},
 )
 defer store.Close(context.Background())
 
@@ -552,7 +552,7 @@ auth, err := auth.NewServiceFromFile(
 1. If you want to manually edit the Google Sheet, you can do it, but you need to understand the value encoding scheme.
 2. It is not easy to support concurrent operations. Only few modes or abstractions allow concurrent operations.
 3. Performance is not a high priority for this project.
-4. `GoFreeLeh` does not support OAuth2 flow that spans across frontend and backend yet.
+4. `GoFreeDB` does not support OAuth2 flow that spans across frontend and backend yet.
 
 ### (Google Sheets Key Value) Exclamation Mark `!` Prefix
 
@@ -583,4 +583,4 @@ auth, err := auth.NewServiceFromFile(
 
 # License
 
-This project is [MIT licensed](https://github.com/FreeLeh/GoFreeLeh/blob/main/LICENSE).
+This project is [MIT licensed](https://github.com/FreeLeh/GoFreeDB/blob/main/LICENSE).
