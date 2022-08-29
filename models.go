@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"regexp"
-	"strconv"
 
 	"github.com/FreeLeh/GoFreeDB/google/auth"
 
@@ -37,11 +36,6 @@ const (
 	kvGetDefaultQueryTemplate     = "=VLOOKUP(\"%s\", %s, 2, FALSE)"
 	kvFindKeyA1RangeQueryTemplate = "=MATCH(\"%s\", %s, 0)"
 
-	rowGetIndicesQueryTemplate           = "=JOIN(\",\", ARRAYFORMULA(QUERY({%s, ROW(%s)}, \"%s\")))"
-	rwoCountQueryTemplate                = "=COUNT(QUERY(%s, \"%s\"))"
-	rowUpdateModifyWhereNonEmptyTemplate = "%s IS NOT NULL AND %s"
-	rowUpdateModifyWhereEmptyTemplate    = "%s IS NOT NULL"
-
 	naValue       = "#N/A"
 	errorValue    = "#ERROR!"
 	rowIdxCol     = "_rid"
@@ -63,7 +57,10 @@ var (
 	defaultRowFullTableRange = "A2:" + generateColumnName(maxColumn-1)
 	rowDeleteRangeTemplate   = "A%d:" + generateColumnName(maxColumn-1) + "%d"
 
-	lastColIdxName = "Col" + strconv.FormatInt(int64(maxColumn+1), 10)
+	// The first condition `_rid IS NOT NULL` is necessary to ensure we are just updating rows that are non-empty.
+	// This is required for UPDATE without WHERE clause (otherwise it will see every row as update target).
+	rowWhereNonEmptyConditionTemplate = rowIdxCol + " is not null AND %s"
+	rowWhereEmptyConditionTemplate    = rowIdxCol + " is not null"
 
 	googleSheetSelectStmtStringKeyword = regexp.MustCompile("^(date|datetime|timeofday)")
 )
@@ -99,14 +96,6 @@ func (m colsMapping) NameMap() map[string]string {
 	result := make(map[string]string, 0)
 	for col, val := range m {
 		result[col] = val.name
-	}
-	return result
-}
-
-func (m colsMapping) ColIdxNameMap() map[string]string {
-	result := make(map[string]string, 0)
-	for col, val := range m {
-		result[col] = "Col" + strconv.FormatInt(int64(val.idx+1), 10)
 	}
 	return result
 }
