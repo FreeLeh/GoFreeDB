@@ -1,4 +1,4 @@
-package freeleh
+package freedb
 
 import "errors"
 

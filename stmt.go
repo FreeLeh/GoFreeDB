@@ -1,4 +1,4 @@
-package freeleh
+package freedb
 
 import (
 	"context"
@@ -8,17 +8,20 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/FreeLeh/GoFreeLeh/internal/google/sheets"
+	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
 )
 
+type whereInterceptorFunc func(where string) string
+
 type queryBuilder struct {
-	replacer  *strings.Replacer
-	columns   []string
-	where     string
-	whereArgs []interface{}
-	orderBy   []string
-	limit     uint64
-	offset    uint64
+	replacer         *strings.Replacer
+	columns          []string
+	where            string
+	whereArgs        []interface{}
+	whereInterceptor whereInterceptorFunc
+	orderBy          []string
+	limit            uint64
+	offset           uint64
 }
 
 func (q *queryBuilder) Where(condition string, args ...interface{}) *queryBuilder {
@@ -83,16 +86,17 @@ func (q *queryBuilder) writeCols(stmt *strings.Builder) error {
 }
 
 func (q *queryBuilder) writeWhere(stmt *strings.Builder) error {
-	if len(q.where) == 0 {
-		return nil
+	where := q.where
+	if q.whereInterceptor != nil {
+		where = q.whereInterceptor(q.where)
 	}
 
-	nArgs := strings.Count(q.where, "?")
+	nArgs := strings.Count(where, "?")
 	if nArgs != len(q.whereArgs) {
 		return fmt.Errorf("number of arguments required in the 'where' clause (%d) is not the same as the number of provided arguments (%d)", nArgs, len(q.whereArgs))
 	}
 
-	where := q.replacer.Replace(q.where)
+	where = q.replacer.Replace(where)
 	tokens := strings.Split(where, "?")
 
 	result := make([]string, 0)
@@ -188,13 +192,21 @@ func (q *queryBuilder) writeLimit(stmt *strings.Builder) error {
 	return nil
 }
 
-func newQueryBuilder(colReplacements map[string]string, colSelected []string) *queryBuilder {
+func newQueryBuilder(
+	colReplacements map[string]string,
+	whereInterceptor whereInterceptorFunc,
+	colSelected []string,
+) *queryBuilder {
 	replacements := make([]string, 0, 2*len(colReplacements))
 	for col, repl := range colReplacements {
 		replacements = append(replacements, col, repl)
 	}
 
-	return &queryBuilder{replacer: strings.NewReplacer(replacements...), columns: colSelected}
+	return &queryBuilder{
+		replacer:         strings.NewReplacer(replacements...),
+		columns:          colSelected,
+		whereInterceptor: whereInterceptor,
+	}
 }
 
 // GoogleSheetSelectStmt encapsulates information required to query the row store.
@@ -326,7 +338,7 @@ func newGoogleSheetSelectStmt(store *GoogleSheetRowStore, output interface{}, co
 	return &GoogleSheetSelectStmt{
 		store:        store,
 		columns:      columns,
-		queryBuilder: newQueryBuilder(store.colsMapping.NameMap(), columns),
+		queryBuilder: newQueryBuilder(store.colsMapping.NameMap(), ridWhereClauseInterceptor, columns),
 		output:       output,
 	}
 }
@@ -413,13 +425,7 @@ type GoogleSheetUpdateStmt struct {
 // It works just like the GoogleSheetSelectStmt.Where() method.
 // Please read GoogleSheetSelectStmt.Where() for more details.
 func (s *GoogleSheetUpdateStmt) Where(condition string, args ...interface{}) *GoogleSheetUpdateStmt {
-	// The first condition `_ts IS NOT NULL` is necessary to ensure we are just updating rows that are non-empty.
-	// This is required for UPDATE without WHERE clause (otherwise it will see every row as update target).
-	if condition == "" {
-		s.queryBuilder.Where(fmt.Sprintf(rowUpdateModifyWhereEmptyTemplate, rowIdxCol), args...)
-	} else {
-		s.queryBuilder.Where(fmt.Sprintf(rowUpdateModifyWhereNonEmptyTemplate, rowIdxCol, condition), args...)
-	}
+	s.queryBuilder.Where(condition, args...)
 	return s
 }
 
@@ -478,7 +484,7 @@ func newGoogleSheetUpdateStmt(store *GoogleSheetRowStore, colToValue map[string]
 	return &GoogleSheetUpdateStmt{
 		store:        store,
 		colToValue:   colToValue,
-		queryBuilder: newQueryBuilder(store.colsMapping.NameMap(), []string{rowIdxCol}),
+		queryBuilder: newQueryBuilder(store.colsMapping.NameMap(), ridWhereClauseInterceptor, []string{rowIdxCol}),
 	}
 }
 
@@ -521,7 +527,7 @@ func (s *GoogleSheetDeleteStmt) Exec(ctx context.Context) error {
 func newGoogleSheetDeleteStmt(store *GoogleSheetRowStore) *GoogleSheetDeleteStmt {
 	return &GoogleSheetDeleteStmt{
 		store:        store,
-		queryBuilder: newQueryBuilder(store.colsMapping.ColIdxNameMap(), []string{lastColIdxName}),
+		queryBuilder: newQueryBuilder(store.colsMapping.NameMap(), ridWhereClauseInterceptor, []string{rowIdxCol}),
 	}
 }
 
@@ -566,7 +572,7 @@ func newGoogleSheetCountStmt(store *GoogleSheetRowStore) *GoogleSheetCountStmt {
 	countClause := fmt.Sprintf("COUNT(%s)", rowIdxCol)
 	return &GoogleSheetCountStmt{
 		store:        store,
-		queryBuilder: newQueryBuilder(store.colsMapping.NameMap(), []string{countClause}),
+		queryBuilder: newQueryBuilder(store.colsMapping.NameMap(), ridWhereClauseInterceptor, []string{countClause}),
 	}
 }
 
@@ -605,4 +611,11 @@ func generateRowA1Ranges(sheetName string, indices []int64) []string {
 		)
 	}
 	return locations
+}
+
+func ridWhereClauseInterceptor(where string) string {
+	if where == "" {
+		return rowWhereEmptyConditionTemplate
+	}
+	return fmt.Sprintf(rowWhereNonEmptyConditionTemplate, where)
 }

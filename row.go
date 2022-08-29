@@ -1,4 +1,4 @@
-package freeleh
+package freedb
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/FreeLeh/GoFreeLeh/internal/google/sheets"
+	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
 )
 
 // GoogleSheetRowStoreConfig defines a list of configurations that can be used to customise how the GoogleSheetRowStore works.

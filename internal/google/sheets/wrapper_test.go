@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/FreeLeh/GoFreeLeh/google/auth"
-	"github.com/FreeLeh/GoFreeLeh/internal/google/fixtures"
+	"github.com/FreeLeh/GoFreeDB/google/auth"
+	"github.com/FreeLeh/GoFreeDB/internal/google/fixtures"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/h2non/gock.v1"
 )
@@ -589,13 +589,13 @@ func TestQueryRows(t *testing.T) {
 	t.Run("successful", func(t *testing.T) {
 		expectedParams := map[string]string{
 			"sheet":   "s1",
-			"tqx":     "responseHandler:freeleh",
+			"tqx":     "responseHandler:freedb",
 			"tq":      "select A, B",
 			"headers": "1",
 		}
 		resp := `
 			/*O_o*/
-			freeleh({"version":"0.6","reqId":"0","status":"ok","sig":"141753603","table":{"cols":[{"id":"A","label":"","type":"string"},{"id":"B","label":"","type":"number","pattern":"General"}],"rows":[{"c":[{"v":"k1"},{"v":103.51,"f":"103.51"}]},{"c":[{"v":"k2"},{"v":111.0,"f":"111"}]},{"c":[{"v":"k3"},{"v":123.0,"f":"123"}]}],"parsedNumHeaders":0}})
+			freedb({"version":"0.6","reqId":"0","status":"ok","sig":"141753603","table":{"cols":[{"id":"A","label":"","type":"string"},{"id":"B","label":"","type":"number","pattern":"General"}],"rows":[{"c":[{"v":"k1"},{"v":103.51,"f":"103.51"}]},{"c":[{"v":"k2"},{"v":111.0,"f":"111"}]},{"c":[{"v":"k3"},{"v":123.0,"f":"123"}]}],"parsedNumHeaders":0}})
 		`
 
 		gock.New("https://docs.google.com").
