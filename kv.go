@@ -18,7 +18,7 @@ type GoogleSheetKVStoreConfig struct {
 //
 // There are 2 operation modes for the key-value store: default and append only mode.
 //
-// For more details on how they differ, please read the explanations for each method or the TODO(edocsss) protocol page.
+// For more details on how they differ, please read the explanations for each method or the protocol page: https://github.com/FreeLeh/docs/blob/main/freedb/protocols.md.
 type GoogleSheetKVStore struct {
 	wrapper             sheetsWrapper
 	spreadsheetID       string
