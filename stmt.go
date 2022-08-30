@@ -226,7 +226,7 @@ type GoogleSheetSelectStmt struct {
 // "args" specifies the real value to replace each placeholder in the WHERE clause.
 // Note that the first "args" value will replace the first placeholder "?" in the WHERE clause.
 //
-// If you want to understand the reason behind this design, please read TODO(edocsss) the protocol page.
+// If you want to understand the reason behind this design, please read the protocol page: https://github.com/FreeLeh/docs/blob/main/freedb/protocols.md.
 //
 // All conditions supported by Google Sheet "QUERY" function are supported by this library.
 // You can read the full information in https://developers.google.com/chart/interactive/docs/querylanguage#where.

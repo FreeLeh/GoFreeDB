@@ -53,7 +53,7 @@
 
 ## Protocols
 
-Clients are strongly encouraged to read through the **[protocols document](TODO)** to see how things work
+Clients are strongly encouraged to read through the **[protocols document](https://github.com/FreeLeh/docs/blob/main/freedb/protocols.md)** to see how things work
 under the hood and **the limitations**.
 
 ## Getting Started
@@ -286,7 +286,7 @@ err := kv.Delete(context.Background(), "k1")
 
 ### Supported Modes
 
-> For more details on how the two modes are different, please read the [protocol document](TODO).
+> For more details on how the two modes are different, please read the [protocol document](https://github.com/FreeLeh/docs/blob/main/freedb/protocols.md).
 
 There are 2 different modes supported:
 
