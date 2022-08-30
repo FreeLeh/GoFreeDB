@@ -182,7 +182,7 @@ err := store.Insert(
 ```go
 colToUpdate := make(map[string]interface{})
 colToUpdate["name"] = "new_name"
-colToUpdate["age"] = 
+colToUpdate["age"] = 12
 
 // Update all rows
 err := store.
