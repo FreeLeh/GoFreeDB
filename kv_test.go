@@ -67,7 +67,7 @@ func TestNewGoogleSheetKVStore_Default_Integration(t *testing.T) {
 		googleAuth,
 		spreadsheetID,
 		sheetName,
-		GoogleSheetKVStoreConfig{Mode: KVModeAppendOnly},
+		GoogleSheetKVStoreConfig{Mode: KVModeDefault},
 	)
 	defer func() {
 		deleteSheet(t, kv.wrapper, spreadsheetID, []string{kv.sheetName, kv.scratchpadSheetName})
