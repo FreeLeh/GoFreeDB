@@ -1,4 +1,5 @@
 # GoFreeDB
+![Coverage](https://img.shields.io/badge/Coverage-51.0%25-yellow)
 
 <br />
 
