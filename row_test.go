@@ -3,6 +3,7 @@ package freedb
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/FreeLeh/GoFreeDB/google/auth"
@@ -40,7 +41,7 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 
 	var out []testPerson
 
-	err = db.Select(&out, "name", "age").Exec(context.Background())
+	err = db.Select(&out, "name", "age").Offset(10).Limit(10).Exec(context.Background())
 	assert.Nil(t, err)
 	assert.Empty(t, out)
 
@@ -93,4 +94,31 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 func TestInjectTimestampCol(t *testing.T) {
 	result := injectTimestampCol(GoogleSheetRowStoreConfig{Columns: []string{"col1", "col2"}})
 	assert.Equal(t, GoogleSheetRowStoreConfig{Columns: []string{rowIdxCol, "col1", "col2"}}, result)
+}
+
+func TestGoogleSheetRowStoreConfig_validate(t *testing.T) {
+	t.Run("empty_columns", func(t *testing.T) {
+		conf := GoogleSheetRowStoreConfig{Columns: []string{}}
+		assert.NotNil(t, conf.validate())
+	})
+
+	t.Run("too_many_columns", func(t *testing.T) {
+		columns := make([]string, 0)
+		for i := 0; i < 27; i++ {
+			columns = append(columns, strconv.FormatInt(int64(i), 10))
+		}
+
+		conf := GoogleSheetRowStoreConfig{Columns: columns}
+		assert.NotNil(t, conf.validate())
+	})
+
+	t.Run("no_error", func(t *testing.T) {
+		columns := make([]string, 0)
+		for i := 0; i < 10; i++ {
+			columns = append(columns, strconv.FormatInt(int64(i), 10))
+		}
+
+		conf := GoogleSheetRowStoreConfig{Columns: columns}
+		assert.Nil(t, conf.validate())
+	})
 }

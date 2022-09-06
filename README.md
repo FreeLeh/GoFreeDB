@@ -1,5 +1,4 @@
 # GoFreeDB
-
 <br />
 
 <div align="center">
@@ -19,7 +18,9 @@
 <div align="center">
 
   ![Unit Test](https://github.com/FreeLeh/GoFreeDB/actions/workflows/unit_test.yml/badge.svg)
-  ![Integration Test](https://github.com/FreeLeh/GoFreeDB/actions/workflows/integration_test.yml/badge.svg)
+  ![Integration Test](https://github.com/FreeLeh/GoFreeDB/actions/workflows/full_test.yml/badge.svg)
+![Coverage](https://img.shields.io/badge/Coverage-81.8%25-brightgreen)
+  [![Go Report Card](https://goreportcard.com/badge/github.com/FreeLeh/GoFreeDB)](https://goreportcard.com/report/github.com/FreeLeh/GoFreeDB)
   [![Go Reference](https://pkg.go.dev/badge/github.com/FreeLeh/GoFreeDB.svg)](https://pkg.go.dev/github.com/FreeLeh/GoFreeDB)
 
 </div>

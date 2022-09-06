@@ -1,0 +1,72 @@
+name: Full Test
+on: 
+  pull_request:
+    types: [synchronize]
+
+env:
+  INTEGRATION_TEST_SPREADSHEET_ID: ${{ secrets.INTEGRATION_TEST_SPREADSHEET_ID }}
+  INTEGRATION_TEST_AUTH_JSON: ${{ secrets.INTEGRATION_TEST_AUTH_JSON }}
+
+jobs:
+  full_test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ['1.18.x']
+
+    # This essentially means either the PR is just approved or it's edocsss who runs this.
+    if: github.event.review.state == 'approved' || github.event.pull_request.user.login == 'edocsss'
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+
+      - name: Golang version
+        run: go version
+
+      - name: Full Test
+        run: |
+          go test -v -count=1 -cover ./... -coverprofile coverage.out -coverpkg ./...
+          go tool cover -func coverage.out -o coverage.out
+
+      - name: Go Coverage Badge
+        uses: tj-actions/coverage-badge-go@v1
+        with:
+          green: 80
+          filename: coverage.out
+
+      # - name: Commit updated readme
+      #   run: |
+      #     - git config user.name "GitHub Bot"
+      #     - git config user.email "github-actions[bot]@users.noreply.github.com"
+      #     - git add ./README.md
+      #     - git commit -m "CI: Update README with test coverage badge"
+      #     - git push origin 
+
+      - name: Add Coverage Badge
+        uses: stefanzweifel/git-auto-commit-action@v4
+        id: auto-commit-action
+        with:
+          commit_message: Apply Code Coverage Badge
+          skip_fetch: true
+          skip_checkout: true
+          file_pattern: ./README.md
+
+      - name: Push Changes
+        if: steps.auto-commit-action.outputs.changes_detected == 'true'
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ github.token }}
+          branch: ${{ github.head_ref }}

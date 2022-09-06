@@ -85,6 +85,9 @@ func TestNewGoogleSheetKVStore_Default_Integration(t *testing.T) {
 	assert.Equal(t, []byte("test"), value)
 	assert.Nil(t, err)
 
+	err = kv.Set(context.Background(), "k1", []byte("test2"))
+	assert.Nil(t, err)
+
 	err = kv.Delete(context.Background(), "k1")
 	assert.Nil(t, err)
 

@@ -14,6 +14,6 @@ func TestService_CheckWrappedTransport(t *testing.T) {
 	service, err := NewServiceFromFile(path, []string{}, ServiceConfig{})
 	assert.Nil(t, err, "should not have any error instantiating the service account wrapper")
 
-	_, ok := service.googleAuthClient.Transport.(*oauth2.Transport)
+	_, ok := service.HTTPClient().Transport.(*oauth2.Transport)
 	assert.True(t, ok, "the HTTP client should be using the custom Google OAuth2 HTTP transport")
 }
