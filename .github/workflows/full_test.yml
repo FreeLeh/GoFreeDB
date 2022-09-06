@@ -10,11 +10,11 @@ env:
 jobs:
   full_test:
     runs-on: ubuntu-latest
-    environment: integration_test
     strategy:
       matrix:
         go-version: ['1.18.x']
 
+    # This essentially means either the PR is just approved or it's edocsss who runs this.
     if: github.event.review.state == 'approved' || github.event.pull_request.user.login == 'edocsss'
 
     steps:
