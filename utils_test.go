@@ -6,6 +6,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestGetA1Range(t *testing.T) {
+	assert.Equal(t, "sheet!A1:A50", getA1Range("sheet", "A1:A50"))
+	assert.Equal(t, "sheet!A1", getA1Range("sheet", "A1"))
+	assert.Equal(t, "sheet!A", getA1Range("sheet", "A"))
+}
+
 func TestGenerateColumnName(t *testing.T) {
 	tc := []struct {
 		name     string

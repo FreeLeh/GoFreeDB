@@ -20,6 +20,7 @@
 
   ![Unit Test](https://github.com/FreeLeh/GoFreeDB/actions/workflows/unit_test.yml/badge.svg)
   ![Integration Test](https://github.com/FreeLeh/GoFreeDB/actions/workflows/integration_test.yml/badge.svg)
+  [![Go Report Card](https://goreportcard.com/badge/github.com/FreeLeh/GoFreeDB)](https://goreportcard.com/report/github.com/FreeLeh/GoFreeDB)
   [![Go Reference](https://pkg.go.dev/badge/github.com/FreeLeh/GoFreeDB.svg)](https://pkg.go.dev/github.com/FreeLeh/GoFreeDB)
 
 </div>

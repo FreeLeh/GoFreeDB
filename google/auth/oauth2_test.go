@@ -18,7 +18,7 @@ func TestNewOAuth2_CheckWrappedTransport_WithStoredCredentials(t *testing.T) {
 	auth, err := NewOAuth2FromFile(secretPath, credsPath, []string{}, OAuth2Config{})
 	assert.Nil(t, err, "should not have any error instantiating the OAuth2 wrapper")
 
-	_, ok := auth.googleAuthClient.Transport.(*oauth2.Transport)
+	_, ok := auth.HTTPClient().Transport.(*oauth2.Transport)
 	assert.True(t, ok, "the HTTP client should be using the custom Google OAuth2 HTTP transport")
 
 	_, err = os.Stat(credsPath)

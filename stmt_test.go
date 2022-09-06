@@ -38,7 +38,7 @@ func TestGenerateQuery(t *testing.T) {
 
 		result, err := builder.Generate()
 		assert.Nil(t, err)
-		assert.Equal(t, "select B, C where A is not null AND (B > 100 AND C <= true ) OR (B != 'value' AND C == 3.14 )", result)
+		assert.Equal(t, "select B, C where A is not null AND (B > 100 AND C <= true ) OR (B != \"value\" AND C == 3.14 )", result)
 	})
 
 	t.Run("unsuccessful_with_where_wrong_arg_count", func(t *testing.T) {
@@ -75,6 +75,112 @@ func TestGenerateQuery(t *testing.T) {
 		result, err := builder.Generate()
 		assert.Nil(t, err)
 		assert.Equal(t, "select B, C where A is not null order by C DESC, B ASC", result)
+	})
+
+	t.Run("test_argument_types", func(t *testing.T) {
+		builder := newQueryBuilder(colsMapping.NameMap(), ridWhereClauseInterceptor, []string{"col1", "col2"})
+		tc := []struct {
+			input  interface{}
+			output string
+			err    error
+		}{
+			{
+				input:  int(1),
+				output: "1",
+				err:    nil,
+			},
+			{
+				input:  int8(1),
+				output: "1",
+				err:    nil,
+			},
+			{
+				input:  int16(1),
+				output: "1",
+				err:    nil,
+			},
+			{
+				input:  int32(1),
+				output: "1",
+				err:    nil,
+			},
+			{
+				input:  int64(1),
+				output: "1",
+				err:    nil,
+			},
+			{
+				input:  uint(1),
+				output: "1",
+				err:    nil,
+			},
+			{
+				input:  uint8(1),
+				output: "1",
+				err:    nil,
+			},
+			{
+				input:  uint16(1),
+				output: "1",
+				err:    nil,
+			},
+			{
+				input:  uint32(1),
+				output: "1",
+				err:    nil,
+			},
+			{
+				input:  uint64(1),
+				output: "1",
+				err:    nil,
+			},
+			{
+				input:  float32(1.5),
+				output: "1.5",
+				err:    nil,
+			},
+			{
+				input:  float64(1.5),
+				output: "1.5",
+				err:    nil,
+			},
+			{
+				input:  "something",
+				output: "\"something\"",
+				err:    nil,
+			},
+			{
+				input:  "date",
+				output: "date",
+				err:    nil,
+			},
+			{
+				input:  "datetime",
+				output: "datetime",
+				err:    nil,
+			},
+			{
+				input:  "timeofday",
+				output: "timeofday",
+				err:    nil,
+			},
+			{
+				input:  true,
+				output: "true",
+				err:    nil,
+			},
+			{
+				input:  []byte("something"),
+				output: "\"something\"",
+				err:    nil,
+			},
+		}
+
+		for _, c := range tc {
+			result, err := builder.convertArg(c.input)
+			assert.Equal(t, c.output, result)
+			assert.Equal(t, c.err, err)
+		}
 	})
 }
 

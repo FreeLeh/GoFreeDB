@@ -146,7 +146,7 @@ func (q *queryBuilder) convertArg(arg interface{}) (string, error) {
 		if googleSheetSelectStmtStringKeyword.MatchString(cleaned) {
 			return converted, nil
 		}
-		return "'" + converted + "'", nil
+		return strconv.Quote(converted), nil
 	case []byte:
 		return strconv.Quote(string(converted)), nil
 	case bool:

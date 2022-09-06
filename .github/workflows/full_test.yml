@@ -1,4 +1,4 @@
-name: Integration Test
+name: Full Test
 on:
   pull_request_review:
     types: [submitted]
@@ -8,7 +8,7 @@ env:
   INTEGRATION_TEST_AUTH_JSON: ${{ secrets.INTEGRATION_TEST_AUTH_JSON }}
 
 jobs:
-  integration_test:
+  full_test:
     runs-on: ubuntu-latest
     environment: integration_test
     strategy:
@@ -29,5 +29,7 @@ jobs:
       - name: Golang version
         run: go version
 
-      - name: Integration Test
-        run: go test -v ./... -count=1 -run="_Integration"
+      - name: Full Test
+        run: |
+          go test -v -count=1 -cover ./... -coverprofile coverage.out -coverpkg ./...
+          go tool cover -func coverage.out -o coverage.out
