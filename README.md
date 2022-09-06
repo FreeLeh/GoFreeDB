@@ -1,6 +1,4 @@
 # GoFreeDB
-![Coverage](https://img.shields.io/badge/Coverage-51.0%25-yellow)
-
 <br />
 
 <div align="center">
@@ -21,6 +19,7 @@
 
   ![Unit Test](https://github.com/FreeLeh/GoFreeDB/actions/workflows/unit_test.yml/badge.svg)
   ![Integration Test](https://github.com/FreeLeh/GoFreeDB/actions/workflows/integration_test.yml/badge.svg)
+  ![Coverage](https://img.shields.io/badge/Coverage-Placeholder)
   [![Go Report Card](https://goreportcard.com/badge/github.com/FreeLeh/GoFreeDB)](https://goreportcard.com/report/github.com/FreeLeh/GoFreeDB)
   [![Go Reference](https://pkg.go.dev/badge/github.com/FreeLeh/GoFreeDB.svg)](https://pkg.go.dev/github.com/FreeLeh/GoFreeDB)
 
