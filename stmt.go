@@ -117,6 +117,21 @@ func (q *queryBuilder) writeWhere(stmt *strings.Builder) error {
 
 func (q *queryBuilder) convertArg(arg interface{}) (string, error) {
 	switch converted := arg.(type) {
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return q.convertInt(arg)
+	case float32, float64:
+		return q.convertFloat(arg)
+	case string, []byte:
+		return q.convertString(arg)
+	case bool:
+		return strconv.FormatBool(converted), nil
+	default:
+		return "", errors.New("unsupported argument type")
+	}
+}
+
+func (q *queryBuilder) convertInt(arg interface{}) (string, error) {
+	switch converted := arg.(type) {
 	case int:
 		return strconv.FormatInt(int64(converted), 10), nil
 	case int8:
@@ -137,10 +152,24 @@ func (q *queryBuilder) convertArg(arg interface{}) (string, error) {
 		return strconv.FormatUint(uint64(converted), 10), nil
 	case uint64:
 		return strconv.FormatUint(converted, 10), nil
+	default:
+		return "", errors.New("unsupported argument type")
+	}
+}
+
+func (q *queryBuilder) convertFloat(arg interface{}) (string, error) {
+	switch converted := arg.(type) {
 	case float32:
 		return strconv.FormatFloat(float64(converted), 'f', -1, 64), nil
 	case float64:
 		return strconv.FormatFloat(converted, 'f', -1, 64), nil
+	default:
+		return "", errors.New("unsupported argument type")
+	}
+}
+
+func (q *queryBuilder) convertString(arg interface{}) (string, error) {
+	switch converted := arg.(type) {
 	case string:
 		cleaned := strings.ToLower(strings.TrimSpace(converted))
 		if googleSheetSelectStmtStringKeyword.MatchString(cleaned) {
@@ -149,8 +178,6 @@ func (q *queryBuilder) convertArg(arg interface{}) (string, error) {
 		return strconv.Quote(converted), nil
 	case []byte:
 		return strconv.Quote(string(converted)), nil
-	case bool:
-		return strconv.FormatBool(converted), nil
 	default:
 		return "", errors.New("unsupported argument type")
 	}
