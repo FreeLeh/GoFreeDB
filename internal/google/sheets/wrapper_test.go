@@ -615,8 +615,8 @@ func TestQueryRows(t *testing.T) {
 
 		expected := QueryRowsResult{Rows: [][]interface{}{
 			{"k1", 103.51},
-			{"k2", int64(111)},
-			{"k3", int64(123)},
+			{"k2", float64(111)},
+			{"k3", float64(123)},
 		}}
 		assert.Equal(t, expected, res)
 	})

@@ -135,12 +135,7 @@ func (r rawQueryRowsResult) convertRawValue(cellIdx int, cell rawQueryRowsResult
 	case "boolean":
 		return strings.ToLower(cell.Raw) == "true", nil
 	case "number":
-		if strings.Contains(cell.Raw, ".") {
-			return cell.Value, nil
-		} else {
-			val := cell.Value.(float64)
-			return int64(val), nil
-		}
+		return cell.Value, nil
 	case "string":
 		// `string` type does not have the raw value
 		return cell.Value, nil

@@ -117,8 +117,8 @@ func TestRawQueryRowsResult_toQueryRowsResult(t *testing.T) {
 
 		expected := QueryRowsResult{
 			Rows: [][]interface{}{
-				{int64(123), "blah", true},
-				{int64(456), "blah2", false},
+				{float64(123), "blah", true},
+				{float64(456), "blah2", false},
 				{123.1, "blah", true},
 			},
 		}
