@@ -133,7 +133,7 @@ func (r rawQueryRowsResult) convertRawValue(cellIdx int, cell rawQueryRowsResult
 	col := r.Table.Cols[cellIdx]
 	switch col.Type {
 	case "boolean":
-		return strings.ToLower(cell.Raw) == "true", nil
+		return cell.Value, nil
 	case "number":
 		return cell.Value, nil
 	case "string":

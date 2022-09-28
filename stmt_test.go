@@ -397,7 +397,7 @@ func TestGoogleSheetUpdateStmt_generateBatchUpdateRequests(t *testing.T) {
 			},
 		}
 
-		assert.Equal(t, expected, requests)
+		assert.ElementsMatch(t, expected, requests)
 		assert.Nil(t, err)
 	})
 
