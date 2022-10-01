@@ -11,7 +11,7 @@ import (
 
 type person struct {
 	Name string `db:"name,omitempty"`
-	Age  int    `db:"age,omitempty"`
+	Age  int64  `db:"age,omitempty"`
 	DOB  string `db:"dob,omitempty"`
 }
 
@@ -330,15 +330,15 @@ func TestGoogleSheetInsertStmt_convertRowToSlice(t *testing.T) {
 		stmt := newGoogleSheetInsertStmt(store, nil)
 
 		result, err := stmt.convertRowToSlice(person{Name: "blah", Age: 10, DOB: "2021"})
-		assert.Equal(t, []interface{}{rowIdxFormula, "blah", 10, "2021"}, result)
+		assert.Equal(t, []interface{}{rowIdxFormula, "'blah", int64(10), "'2021"}, result)
 		assert.Nil(t, err)
 
 		result, err = stmt.convertRowToSlice(&person{Name: "blah", Age: 10, DOB: "2021"})
-		assert.Equal(t, []interface{}{rowIdxFormula, "blah", 10, "2021"}, result)
+		assert.Equal(t, []interface{}{rowIdxFormula, "'blah", int64(10), "'2021"}, result)
 		assert.Nil(t, err)
 
 		result, err = stmt.convertRowToSlice(person{Name: "blah", DOB: "2021"})
-		assert.Equal(t, []interface{}{rowIdxFormula, "blah", nil, "2021"}, result)
+		assert.Equal(t, []interface{}{rowIdxFormula, "'blah", nil, "'2021"}, result)
 		assert.Nil(t, err)
 
 		type dummy struct {
@@ -346,7 +346,93 @@ func TestGoogleSheetInsertStmt_convertRowToSlice(t *testing.T) {
 		}
 
 		result, err = stmt.convertRowToSlice(dummy{Name: "blah"})
-		assert.Equal(t, []interface{}{rowIdxFormula, "blah", nil, nil}, result)
+		assert.Equal(t, []interface{}{rowIdxFormula, "'blah", nil, nil}, result)
 		assert.Nil(t, err)
+	})
+
+	t.Run("ieee754_safe_integers", func(t *testing.T) {
+		stmt := newGoogleSheetInsertStmt(store, nil)
+
+		result, err := stmt.convertRowToSlice(person{Name: "blah", Age: 9007199254740992, DOB: "2021"})
+		assert.Equal(t, []interface{}{rowIdxFormula, "'blah", int64(9007199254740992), "'2021"}, result)
+		assert.Nil(t, err)
+
+		result, err = stmt.convertRowToSlice(person{Name: "blah", Age: 9007199254740993, DOB: "2021"})
+		assert.Nil(t, result)
+		assert.NotNil(t, err)
+	})
+}
+
+func TestGoogleSheetUpdateStmt_generateBatchUpdateRequests(t *testing.T) {
+	wrapper := &sheets.MockWrapper{}
+	store := &GoogleSheetRowStore{
+		wrapper:     wrapper,
+		sheetName:   "sheet1",
+		colsMapping: map[string]colIdx{rowIdxCol: {"A", 0}, "name": {"B", 1}, "age": {"C", 2}, "dob": {"D", 3}},
+		config: GoogleSheetRowStoreConfig{
+			Columns: []string{"name", "age", "dob"},
+		},
+	}
+
+	t.Run("successful", func(t *testing.T) {
+		stmt := newGoogleSheetUpdateStmt(store, map[string]interface{}{"name": "name1", "age": int64(100)})
+
+		requests, err := stmt.generateBatchUpdateRequests([]int64{1, 2})
+		expected := []sheets.BatchUpdateRowsRequest{
+			{
+				A1Range: getA1Range(store.sheetName, "B1"),
+				Values:  [][]interface{}{{"'name1"}},
+			},
+			{
+				A1Range: getA1Range(store.sheetName, "B2"),
+				Values:  [][]interface{}{{"'name1"}},
+			},
+			{
+				A1Range: getA1Range(store.sheetName, "C1"),
+				Values:  [][]interface{}{{int64(100)}},
+			},
+			{
+				A1Range: getA1Range(store.sheetName, "C2"),
+				Values:  [][]interface{}{{int64(100)}},
+			},
+		}
+
+		assert.ElementsMatch(t, expected, requests)
+		assert.Nil(t, err)
+	})
+
+	t.Run("ieee754_safe_integers_successful", func(t *testing.T) {
+		stmt := newGoogleSheetUpdateStmt(store, map[string]interface{}{"name": "name1", "age": int64(9007199254740992)})
+
+		requests, err := stmt.generateBatchUpdateRequests([]int64{1, 2})
+		expected := []sheets.BatchUpdateRowsRequest{
+			{
+				A1Range: getA1Range(store.sheetName, "B1"),
+				Values:  [][]interface{}{{"'name1"}},
+			},
+			{
+				A1Range: getA1Range(store.sheetName, "B2"),
+				Values:  [][]interface{}{{"'name1"}},
+			},
+			{
+				A1Range: getA1Range(store.sheetName, "C1"),
+				Values:  [][]interface{}{{int64(9007199254740992)}},
+			},
+			{
+				A1Range: getA1Range(store.sheetName, "C2"),
+				Values:  [][]interface{}{{int64(9007199254740992)}},
+			},
+		}
+
+		assert.ElementsMatch(t, expected, requests)
+		assert.Nil(t, err)
+	})
+
+	t.Run("ieee754_safe_integers_unsuccessful", func(t *testing.T) {
+		stmt := newGoogleSheetUpdateStmt(store, map[string]interface{}{"name": "name1", "age": int64(9007199254740993)})
+
+		requests, err := stmt.generateBatchUpdateRequests([]int64{1, 2})
+		assert.Nil(t, requests)
+		assert.NotNil(t, err)
 	})
 }

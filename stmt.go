@@ -399,7 +399,11 @@ func (s *GoogleSheetInsertStmt) convertRowToSlice(row interface{}) ([]interface{
 
 	for key, value := range output {
 		if colIdx, ok := s.store.colsMapping[key]; ok {
-			result[colIdx.idx] = value
+			escapedValue := escapeValue(value)
+			if err := checkIEEE754SafeInteger(escapedValue); err != nil {
+				return nil, err
+			}
+			result[colIdx.idx] = escapedValue
 		}
 	}
 
@@ -495,11 +499,16 @@ func (s *GoogleSheetUpdateStmt) generateBatchUpdateRequests(rowIndices []int64) 
 			return nil, fmt.Errorf("failed to update, unknown column name provided: %s", col)
 		}
 
+		escapedValue := escapeValue(value)
+		if err := checkIEEE754SafeInteger(escapedValue); err != nil {
+			return nil, err
+		}
+
 		for _, rowIdx := range rowIndices {
 			a1Range := colIdx.name + strconv.FormatInt(rowIdx, 10)
 			requests = append(requests, sheets.BatchUpdateRowsRequest{
 				A1Range: getA1Range(s.store.sheetName, a1Range),
-				Values:  [][]interface{}{{value}},
+				Values:  [][]interface{}{{escapedValue}},
 			})
 		}
 	}
@@ -591,7 +600,7 @@ func (s *GoogleSheetCountStmt) Exec(ctx context.Context) (uint64, error) {
 		return 0, errors.New("")
 	}
 
-	count := result.Rows[0][0].(int64)
+	count := result.Rows[0][0].(float64)
 	return uint64(count), nil
 }
 
@@ -618,12 +627,12 @@ func getRowIndices(ctx context.Context, store *GoogleSheetRowStore, selectStmt s
 			return nil, fmt.Errorf("error retrieving row indices: %+v", result)
 		}
 
-		idx, ok := row[0].(int64)
+		idx, ok := row[0].(float64)
 		if !ok {
 			return nil, fmt.Errorf("error converting row indices, value: %+v", row[0])
 		}
 
-		rowIndices = append(rowIndices, idx)
+		rowIndices = append(rowIndices, int64(idx))
 	}
 
 	return rowIndices, nil

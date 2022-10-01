@@ -114,3 +114,32 @@ func TestGenerateColumnMapping(t *testing.T) {
 		})
 	}
 }
+
+func TestEscapeValue(t *testing.T) {
+	assert.Equal(t, "'blah", escapeValue("blah"))
+	assert.Equal(t, 1, escapeValue(1))
+	assert.Equal(t, true, escapeValue(true))
+}
+
+func TestCheckIEEE754SafeInteger(t *testing.T) {
+	assert.Nil(t, checkIEEE754SafeInteger(int64(0)))
+	assert.Nil(t, checkIEEE754SafeInteger(int(0)))
+	assert.Nil(t, checkIEEE754SafeInteger(uint(0)))
+
+	// -(2^53)
+	assert.Nil(t, checkIEEE754SafeInteger(int64(-9007199254740992)))
+
+	// (2^53)
+	assert.Nil(t, checkIEEE754SafeInteger(int64(9007199254740992)))
+	assert.Nil(t, checkIEEE754SafeInteger(uint64(9007199254740992)))
+
+	// Below and above the limit.
+	assert.NotNil(t, checkIEEE754SafeInteger(int64(-9007199254740993)))
+	assert.NotNil(t, checkIEEE754SafeInteger(int64(9007199254740993)))
+	assert.NotNil(t, checkIEEE754SafeInteger(uint64(9007199254740993)))
+
+	// Other types
+	assert.Nil(t, checkIEEE754SafeInteger("blah"))
+	assert.Nil(t, checkIEEE754SafeInteger(true))
+	assert.Nil(t, checkIEEE754SafeInteger([]byte("something")))
+}

@@ -12,7 +12,7 @@ import (
 
 type testPerson struct {
 	Name string `json:"name" db:"name"`
-	Age  int    `json:"age" db:"age"`
+	Age  int64  `json:"age" db:"age"`
 	DOB  string `json:"dob" db:"dob"`
 }
 
@@ -46,21 +46,19 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 	assert.Empty(t, out)
 
 	err = db.Insert(
-		testPerson{"name1", 10, "1-1-1999"},
-		testPerson{"name2", 11, "1-1-2000"},
+		testPerson{"name1", 10, "1999-01-01"},
+		testPerson{"name2", 11, "2000-01-01"},
 	).Exec(context.Background())
 	assert.Nil(t, err)
 
+	// Nil type
 	err = db.Insert(nil).Exec(context.Background())
-	assert.NotNil(t, err)
-
-	err = db.Insert([]interface{}{"name3", 12, "1-1-2001"}).Exec(context.Background())
 	assert.NotNil(t, err)
 
 	err = db.Insert(testPerson{
 		Name: "name3",
-		Age:  12,
-		DOB:  "1-1-2001",
+		Age:  9007199254740992,
+		DOB:  "2001-01-01",
 	}).Exec(context.Background())
 	assert.Nil(t, err)
 
@@ -70,10 +68,10 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 	assert.Nil(t, err)
 
 	expected := []testPerson{
-		{"name2", 11, ""},
-		{"name3", 12, ""},
+		{"name2", 11, "2000-01-01"},
+		{"name3", 9007199254740992, "2001-01-01"},
 	}
-	err = db.Select(&out, "name", "age").
+	err = db.Select(&out, "name", "age", "dob").
 		Where("name = ? OR name = ?", "name2", "name3").
 		OrderBy([]ColumnOrderBy{{"name", OrderByAsc}}).
 		Limit(2).
@@ -89,6 +87,49 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 
 	err = db.Delete().Where("name = ?", "name4").Exec(context.Background())
 	assert.Nil(t, err)
+}
+
+func TestGoogleSheetRowStore_Integration_EdgeCases(t *testing.T) {
+	spreadsheetID, authJSON, shouldRun := getIntegrationTestInfo()
+	if !shouldRun {
+		t.Skip("integration test should be run only in GitHub Actions")
+	}
+	sheetName := fmt.Sprintf("integration_row_%d", currentTimeMs())
+
+	googleAuth, err := auth.NewServiceFromJSON([]byte(authJSON), auth.GoogleSheetsReadWrite, auth.ServiceConfig{})
+	if err != nil {
+		t.Fatalf("error when instantiating google auth: %s", err)
+	}
+
+	db := NewGoogleSheetRowStore(
+		googleAuth,
+		spreadsheetID,
+		sheetName,
+		GoogleSheetRowStoreConfig{Columns: []string{"name", "age", "dob"}},
+	)
+	defer func() {
+		deleteSheet(t, db.wrapper, spreadsheetID, []string{db.sheetName})
+		_ = db.Close(context.Background())
+	}()
+
+	// Non-struct types
+	err = db.Insert([]interface{}{"name3", 12, "2001-01-01"}).Exec(context.Background())
+	assert.NotNil(t, err)
+
+	// IEEE 754 unsafe integer
+	err = db.Insert([]interface{}{"name3", 9007199254740993, "2001-01-01"}).Exec(context.Background())
+	assert.NotNil(t, err)
+
+	// IEEE 754 unsafe integer
+	err = db.Insert(
+		testPerson{"name1", 10, "1999-01-01"},
+		testPerson{"name2", 11, "2000-01-01"},
+	).Exec(context.Background())
+	assert.Nil(t, err)
+
+	err = db.Update(map[string]interface{}{"name": "name4", "age": int64(9007199254740993)}).
+		Exec(context.Background())
+	assert.NotNil(t, err)
 }
 
 func TestInjectTimestampCol(t *testing.T) {
