@@ -107,7 +107,7 @@ auth, err := auth.NewOAuth2FromFile(
 	auth.OAuth2Config{},
 )
 
-store := freedb.NewGoogleSheetsRowStore(
+store := freedb.NewGoogleSheetRowStore(
 	auth, 
 	"<spreadsheet_id>", 
 	"<sheet_name>", 
