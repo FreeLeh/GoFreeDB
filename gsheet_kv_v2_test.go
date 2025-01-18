@@ -9,26 +9,26 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGoogleSheetKVStore_AppendOnly_Integration(t *testing.T) {
+func TestGoogleSheetKVStoreV2_AppendOnly_Integration(t *testing.T) {
 	spreadsheetID, authJSON, shouldRun := getIntegrationTestInfo()
 	if !shouldRun {
 		t.Skip("integration test should be run only in GitHub Actions")
 	}
-	sheetName := fmt.Sprintf("integration_append_only_%d", currentTimeMs())
+	sheetName := fmt.Sprintf("integration_kv_v2_append_only_%d", currentTimeMs())
 
 	googleAuth, err := auth.NewServiceFromJSON([]byte(authJSON), auth.GoogleSheetsReadWrite, auth.ServiceConfig{})
 	if err != nil {
 		t.Fatalf("error when instantiating google auth: %s", err)
 	}
 
-	kv := NewGoogleSheetKVStore(
+	kv := NewGoogleSheetKVStoreV2(
 		googleAuth,
 		spreadsheetID,
 		sheetName,
-		GoogleSheetKVStoreConfig{Mode: KVModeAppendOnly},
+		GoogleSheetKVStoreV2Config{Mode: KVModeAppendOnly},
 	)
 	defer func() {
-		deleteSheet(t, kv.wrapper, spreadsheetID, []string{kv.sheetName, kv.scratchpadSheetName})
+		deleteSheet(t, kv.rowStore.wrapper, spreadsheetID, []string{kv.rowStore.sheetName})
 		_ = kv.Close(context.Background())
 	}()
 
@@ -51,26 +51,26 @@ func TestGoogleSheetKVStore_AppendOnly_Integration(t *testing.T) {
 	assert.ErrorIs(t, err, ErrKeyNotFound)
 }
 
-func TestNewGoogleSheetKVStore_Default_Integration(t *testing.T) {
+func TestNewGoogleSheetKVStoreV2_Default_Integration(t *testing.T) {
 	spreadsheetID, authJSON, shouldRun := getIntegrationTestInfo()
 	if !shouldRun {
 		t.Skip("integration test should be run only in GitHub Actions")
 	}
-	sheetName := fmt.Sprintf("integration_default_%d", currentTimeMs())
+	sheetName := fmt.Sprintf("integration_kv_v2_default_%d", currentTimeMs())
 
 	googleAuth, err := auth.NewServiceFromJSON([]byte(authJSON), auth.GoogleSheetsReadWrite, auth.ServiceConfig{})
 	if err != nil {
 		t.Fatalf("error when instantiating google auth: %s", err)
 	}
 
-	kv := NewGoogleSheetKVStore(
+	kv := NewGoogleSheetKVStoreV2(
 		googleAuth,
 		spreadsheetID,
 		sheetName,
-		GoogleSheetKVStoreConfig{Mode: KVModeDefault},
+		GoogleSheetKVStoreV2Config{Mode: KVModeDefault},
 	)
 	defer func() {
-		deleteSheet(t, kv.wrapper, spreadsheetID, []string{kv.sheetName, kv.scratchpadSheetName})
+		deleteSheet(t, kv.rowStore.wrapper, spreadsheetID, []string{kv.rowStore.sheetName})
 		_ = kv.Close(context.Background())
 	}()
 
