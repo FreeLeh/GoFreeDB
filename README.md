@@ -112,7 +112,7 @@ auth, err := auth.NewOAuth2FromFile(
 	auth.OAuth2Config{},
 )
 
-store := freedb.NewGoogleSheetsRowStore(
+store := freedb.NewGoogleSheetRowStore(
 	auth, 
 	"<spreadsheet_id>", 
 	"<sheet_name>", 
@@ -413,9 +413,3 @@ kv := freedb.NewGoogleSheetKVStoreV2(
 ## License
 
 This project is [MIT licensed](https://github.com/FreeLeh/GoFreeDB/blob/main/LICENSE).
-
-
-Lark:
-- Spreadsheet Token = Spreadsheet ID
-- Sheet ID -> not sure whether this is actually needed, but this is basically sheet name.
-- 
