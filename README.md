@@ -19,7 +19,7 @@
 
   ![Unit Test](https://github.com/FreeLeh/GoFreeDB/actions/workflows/unit_test.yml/badge.svg)
   ![Integration Test](https://github.com/FreeLeh/GoFreeDB/actions/workflows/full_test.yml/badge.svg)
-![Coverage](https://img.shields.io/badge/Coverage-82.2%25-brightgreen)
+![Coverage](https://img.shields.io/badge/Coverage-82.6%25-brightgreen)
   [![Go Report Card](https://goreportcard.com/badge/github.com/FreeLeh/GoFreeDB)](https://goreportcard.com/report/github.com/FreeLeh/GoFreeDB)
   [![Go Reference](https://pkg.go.dev/badge/github.com/FreeLeh/GoFreeDB.svg)](https://pkg.go.dev/github.com/FreeLeh/GoFreeDB)
 
