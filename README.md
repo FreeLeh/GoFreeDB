@@ -19,7 +19,7 @@
 
   ![Unit Test](https://github.com/FreeLeh/GoFreeDB/actions/workflows/unit_test.yml/badge.svg)
   ![Integration Test](https://github.com/FreeLeh/GoFreeDB/actions/workflows/full_test.yml/badge.svg)
-![Coverage](https://img.shields.io/badge/Coverage-82.2%25-brightgreen)
+![Coverage](https://img.shields.io/badge/Coverage-82.6%25-brightgreen)
   [![Go Report Card](https://goreportcard.com/badge/github.com/FreeLeh/GoFreeDB)](https://goreportcard.com/report/github.com/FreeLeh/GoFreeDB)
   [![Go Reference](https://pkg.go.dev/badge/github.com/FreeLeh/GoFreeDB.svg)](https://pkg.go.dev/github.com/FreeLeh/GoFreeDB)
 
@@ -53,6 +53,11 @@
   * [Set Key](#set-key)
   * [Delete Key](#delete-key)
   * [Supported Modes](#supported-modes)
+* [KV Store V2](#kv-store-v2)
+  * [Get Value](#get-value-v2)
+  * [Set Key](#set-key-v2)
+  * [Delete Key](#delete-key-v2)
+  * [Supported Modes](#supported-modes-v2)
 
 ## Protocols
 
@@ -237,6 +242,8 @@ type WithTagPerson struct {
 
 ## KV Store
 
+> Please use `KV Store V2` as much as possible, especially if you are creating a new storage.
+
 ```go
 import (
 	"github.com/FreeLeh/GoFreeDB"
@@ -311,6 +318,95 @@ kv := freedb.NewGoogleSheetKVStore(
 	"<spreadsheet_id>",
 	"<sheet_name>",
 	freedb.GoogleSheetKVStoreConfig{Mode: freedb.KVModeAppendOnly},
+)
+```
+
+## KV Store V2
+
+The KV Store V2 is implemented internally using the row store.
+
+> The original `KV Store` was created using more complicated formulas, making it less maintainable.
+> You can still use the original `KV Store` implementation, but we strongly suggest using this new `KV Store V2`.
+
+You cannot use an existing sheet based on `KV Store` with `KV Store V2` as the sheet structure is different. 
+- If you want to convert an existing sheet, just add an `_rid` column and insert the first key-value row with `1`
+  and increase it by 1 until the last row.
+- Remove the timestamp column as `KV Store V2` does not depend on it anymore. 
+
+```go
+import (
+	"github.com/FreeLeh/GoFreeDB"
+	"github.com/FreeLeh/GoFreeDB/google/auth"
+)
+
+// If using Google Service Account.
+auth, err := auth.NewServiceFromFile(
+	"<path_to_service_account_json>", 
+	freedb.FreeDBGoogleAuthScopes, 
+	auth.ServiceConfig{},
+)
+
+// If using Google OAuth2 Flow.
+auth, err := auth.NewOAuth2FromFile(
+	"<path_to_client_secret_json>", 
+	"<path_to_cached_credentials_json>", 
+	freedb.FreeDBGoogleAuthScopes, 
+	auth.OAuth2Config{},
+)
+
+kv := freedb.NewGoogleSheetKVStoreV2(
+	auth, 
+	"<spreadsheet_id>", 
+	"<sheet_name>", 
+	freedb.GoogleSheetKVStoreV2Config{Mode: freedb.KVSetModeAppendOnly},
+)
+defer kv.Close(context.Background())
+```
+
+### Get Value V2
+
+If the key is not found, `freedb.ErrKeyNotFound` will be returned.
+
+```go
+value, err := kv.Get(context.Background(), "k1")
+```
+
+### Set Key V2
+
+```go
+err := kv.Set(context.Background(), "k1", []byte("some_value"))
+```
+
+### Delete Key V2
+
+```go
+err := kv.Delete(context.Background(), "k1")
+```
+
+### Supported Modes V2
+
+> For more details on how the two modes are different, please read the [protocol document](https://github.com/FreeLeh/docs/blob/main/freedb/protocols.md).
+
+There are 2 different modes supported:
+
+1. Default mode.
+2. Append only mode.
+
+```go
+// Default mode
+kv := freedb.NewGoogleSheetKVStoreV2(
+	auth,
+	"<spreadsheet_id>",
+	"<sheet_name>",
+	freedb.GoogleSheetKVStoreV2Config{Mode: freedb.KVModeDefault},
+)
+
+// Append only mode
+kv := freedb.NewGoogleSheetKVStoreV2(
+	auth,
+	"<spreadsheet_id>",
+	"<sheet_name>",
+	freedb.GoogleSheetKVStoreV2Config{Mode: freedb.KVModeAppendOnly},
 )
 ```
 

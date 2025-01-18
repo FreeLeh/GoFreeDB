@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -55,7 +54,7 @@ func (o *OAuth2) HTTPClient() *http.Client {
 // Note that since this is an OAuth2 server flow, human interaction will be needed for the very first authentication.
 // During the OAuth2 flow, you will be asked to click a generated URL in the terminal.
 func NewOAuth2FromFile(secretFilePath string, credsFilePath string, scopes Scopes, config OAuth2Config) (*OAuth2, error) {
-	rawAuthConfig, err := ioutil.ReadFile(secretFilePath)
+	rawAuthConfig, err := os.ReadFile(secretFilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +63,7 @@ func NewOAuth2FromFile(secretFilePath string, credsFilePath string, scopes Scope
 		return newFromClientSecret(rawAuthConfig, credsFilePath, scopes, config)
 	}
 
-	rawCreds, err := ioutil.ReadFile(credsFilePath)
+	rawCreds, err := os.ReadFile(credsFilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -159,5 +158,5 @@ func storeCredentials(credsFilePath string, token *oauth2.Token) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(credsFilePath, tokenJSON, 0644)
+	return os.WriteFile(credsFilePath, tokenJSON, 0644)
 }

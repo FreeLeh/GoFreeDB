@@ -1,8 +1,8 @@
 package auth
 
 import (
-	"io/ioutil"
 	"net/http"
+	"os"
 
 	"golang.org/x/oauth2/google"
 )
@@ -34,7 +34,7 @@ func (s *Service) HTTPClient() *http.Client {
 //
 // The "scopes" tells Google what your application can do to your spreadsheets.
 func NewServiceFromFile(filePath string, scopes Scopes, config ServiceConfig) (*Service, error) {
-	authConfig, err := ioutil.ReadFile(filePath)
+	authConfig, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
