@@ -3,7 +3,6 @@ package freedb
 import (
 	"context"
 	"fmt"
-
 	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
 )
 
@@ -24,30 +23,6 @@ type GoogleSheetKVStoreV2 struct {
 	rowStore *GoogleSheetRowStore
 	mode     KVMode
 	codec    Codec
-}
-
-// NewGoogleSheetKVStoreV2 creates a new instance of the key-value store using row store.
-// You cannot use this V2 store with the V1 store as the sheet format is different.
-func NewGoogleSheetKVStoreV2(
-	auth sheets.AuthClient,
-	spreadsheetID string,
-	sheetName string,
-	config GoogleSheetKVStoreV2Config,
-) *GoogleSheetKVStoreV2 {
-	rowStore := NewGoogleSheetRowStore(
-		auth,
-		spreadsheetID,
-		sheetName,
-		GoogleSheetRowStoreConfig{
-			Columns: []string{"key", "value"},
-		},
-	)
-
-	return &GoogleSheetKVStoreV2{
-		rowStore: rowStore,
-		mode:     config.Mode,
-		codec:    config.codec,
-	}
 }
 
 // Get retrieves the value associated with the given key.
@@ -114,4 +89,34 @@ func (s *GoogleSheetKVStoreV2) Delete(ctx context.Context, key string) error {
 // Close cleans up resources used by the store.
 func (s *GoogleSheetKVStoreV2) Close(ctx context.Context) error {
 	return s.rowStore.Close(ctx)
+}
+
+// NewGoogleSheetKVStoreV2 creates a new instance of the key-value store using row store.
+// You cannot use this V2 store with the V1 store as the sheet format is different.
+func NewGoogleSheetKVStoreV2(
+	auth sheets.AuthClient,
+	spreadsheetID string,
+	sheetName string,
+	config GoogleSheetKVStoreV2Config,
+) *GoogleSheetKVStoreV2 {
+	rowStore := NewGoogleSheetRowStore(
+		auth,
+		spreadsheetID,
+		sheetName,
+		GoogleSheetRowStoreConfig{
+			Columns: []string{"key", "value"},
+		},
+	)
+
+	config = applyGoogleSheetKVStoreV2Config(config)
+	return &GoogleSheetKVStoreV2{
+		rowStore: rowStore,
+		mode:     config.Mode,
+		codec:    config.codec,
+	}
+}
+
+func applyGoogleSheetKVStoreV2Config(config GoogleSheetKVStoreV2Config) GoogleSheetKVStoreV2Config {
+	config.codec = &basicCodec{}
+	return config
 }
