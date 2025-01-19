@@ -1,9 +1,11 @@
-package freedb
+package codec
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/FreeLeh/GoFreeDB/internal/models"
 )
 
 func TestBasicCodecEncode(t *testing.T) {
@@ -29,11 +31,11 @@ func TestBasicCodecEncode(t *testing.T) {
 		},
 		{
 			name:     "NA_value",
-			input:    naValue,
-			expected: "!" + naValue,
+			input:    models.NAValue,
+			expected: "!" + models.NAValue,
 		},
 	}
-	codec := &basicCodec{}
+	codec := &Basic{}
 
 	for _, c := range tc {
 		t.Run(c.name, func(t *testing.T) {
@@ -77,12 +79,12 @@ func TestBasicCodecDecode(t *testing.T) {
 		},
 		{
 			name:     "NA_value",
-			input:    "!" + naValue,
-			expected: []byte(naValue),
+			input:    "!" + models.NAValue,
+			expected: []byte(models.NAValue),
 			hasErr:   false,
 		},
 	}
-	codec := &basicCodec{}
+	codec := &Basic{}
 
 	for _, c := range tc {
 		t.Run(c.name, func(t *testing.T) {

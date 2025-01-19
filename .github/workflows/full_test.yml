@@ -1,7 +1,7 @@
 name: Full Test
 on: 
   pull_request:
-    types: [synchronize]
+    types: [opened, synchronize]
 
 env:
   INTEGRATION_TEST_SPREADSHEET_ID: ${{ secrets.INTEGRATION_TEST_SPREADSHEET_ID }}
@@ -12,7 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: ['1.18.x']
+        # Cannot add all, it will create parallel jobs, might trigger Google Sheets API rate limit.
+        # Technically, we can change this to sequential job, but it will make the YML file longer.
+        go-version: ['1.23.x']
 
     # This essentially means either the PR is just approved or it's edocsss who runs this.
     if: github.event.review.state == 'approved' || github.event.pull_request.user.login == 'edocsss'
@@ -31,7 +33,9 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.go-version }}
-          cache: true
+          # As there is only one Golang script being run.
+          # Faster if we don't cache as the cache is per commit anyway.
+          cache: false
 
       - name: Golang version
         run: go version

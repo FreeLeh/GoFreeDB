@@ -1,9 +1,11 @@
-package freedb
+package store
 
 import (
 	"context"
 	"fmt"
+	"github.com/FreeLeh/GoFreeDB/internal/codec"
 	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
+	"github.com/FreeLeh/GoFreeDB/internal/models"
 )
 
 type googleSheetKVStoreV2Row struct {
@@ -14,14 +16,14 @@ type googleSheetKVStoreV2Row struct {
 // GoogleSheetKVStoreV2Config defines a list of configurations that can be used to customise
 // how the GoogleSheetKVStoreV2 works.
 type GoogleSheetKVStoreV2Config struct {
-	Mode  KVMode
+	Mode  models.KVMode
 	codec Codec
 }
 
 // GoogleSheetKVStoreV2 implements a key-value store using the row store abstraction.
 type GoogleSheetKVStoreV2 struct {
 	rowStore *GoogleSheetRowStore
-	mode     KVMode
+	mode     models.KVMode
 	codec    Codec
 }
 
@@ -30,7 +32,7 @@ func (s *GoogleSheetKVStoreV2) Get(ctx context.Context, key string) ([]byte, err
 	var rows []googleSheetKVStoreV2Row
 	var err error
 
-	if s.mode == KVModeDefault {
+	if s.mode == models.KVModeDefault {
 		err = s.rowStore.Select(&rows, "value").
 			Where("key = ?", key).
 			Limit(1).
@@ -38,8 +40,8 @@ func (s *GoogleSheetKVStoreV2) Get(ctx context.Context, key string) ([]byte, err
 	} else {
 		err = s.rowStore.Select(&rows, "value").
 			Where("key = ?", key).
-			OrderBy([]ColumnOrderBy{
-				{Column: "_rid", OrderBy: OrderByDesc},
+			OrderBy([]models.ColumnOrderBy{
+				{Column: "_rid", OrderBy: models.OrderByDesc},
 			}).
 			Limit(1).
 			Exec(ctx)
@@ -48,12 +50,12 @@ func (s *GoogleSheetKVStoreV2) Get(ctx context.Context, key string) ([]byte, err
 		return nil, err
 	}
 	if len(rows) == 0 {
-		return nil, fmt.Errorf("%w: %s", ErrKeyNotFound, key)
+		return nil, fmt.Errorf("%w: %s", models.ErrKeyNotFound, key)
 	}
 
 	value := rows[0].Value
 	if value == "" {
-		return nil, fmt.Errorf("%w: %s", ErrKeyNotFound, key)
+		return nil, fmt.Errorf("%w: %s", models.ErrKeyNotFound, key)
 	}
 	return s.codec.Decode(value)
 }
@@ -74,7 +76,7 @@ func (s *GoogleSheetKVStoreV2) Set(ctx context.Context, key string, value []byte
 
 // Delete removes the key from the store.
 func (s *GoogleSheetKVStoreV2) Delete(ctx context.Context, key string) error {
-	if s.mode == KVModeDefault {
+	if s.mode == models.KVModeDefault {
 		return s.rowStore.Delete().
 			Where("key = ?", key).
 			Exec(ctx)
@@ -117,6 +119,6 @@ func NewGoogleSheetKVStoreV2(
 }
 
 func applyGoogleSheetKVStoreV2Config(config GoogleSheetKVStoreV2Config) GoogleSheetKVStoreV2Config {
-	config.codec = &basicCodec{}
+	config.codec = codec.NewBasic()
 	return config
 }

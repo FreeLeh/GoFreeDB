@@ -1,8 +1,10 @@
-package freedb
+package store
 
 import (
 	"context"
 	"errors"
+	"github.com/FreeLeh/GoFreeDB/internal/common"
+	"github.com/FreeLeh/GoFreeDB/internal/models"
 	"testing"
 
 	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
@@ -16,7 +18,7 @@ type person struct {
 }
 
 func TestGenerateQuery(t *testing.T) {
-	colsMapping := colsMapping{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}}
+	colsMapping := common.ColsMapping{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}}
 
 	t.Run("successful_basic", func(t *testing.T) {
 		builder := newQueryBuilder(colsMapping.NameMap(), ridWhereClauseInterceptor, []string{"col1", "col2"})
@@ -70,7 +72,7 @@ func TestGenerateQuery(t *testing.T) {
 
 	t.Run("successful_with_order_by", func(t *testing.T) {
 		builder := newQueryBuilder(colsMapping.NameMap(), ridWhereClauseInterceptor, []string{"col1", "col2"})
-		builder.OrderBy([]ColumnOrderBy{{Column: "col2", OrderBy: OrderByDesc}, {Column: "col1", OrderBy: OrderByAsc}})
+		builder.OrderBy([]models.ColumnOrderBy{{Column: "col2", OrderBy: models.OrderByDesc}, {Column: "col1", OrderBy: models.OrderByAsc}})
 
 		result, err := builder.Generate()
 		assert.Nil(t, err)
@@ -85,7 +87,7 @@ func TestGenerateQuery(t *testing.T) {
 			err    error
 		}{
 			{
-				input:  int(1),
+				input:  1,
 				output: "1",
 				err:    nil,
 			},
@@ -140,7 +142,7 @@ func TestGenerateQuery(t *testing.T) {
 				err:    nil,
 			},
 			{
-				input:  float64(1.5),
+				input:  1.5,
 				output: "1.5",
 				err:    nil,
 			},
@@ -186,7 +188,7 @@ func TestGenerateQuery(t *testing.T) {
 
 func TestSelectStmt_AllColumns(t *testing.T) {
 	store := &GoogleSheetRowStore{
-		colsMapping: colsMapping{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}},
+		colsMapping: common.ColsMapping{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}},
 		config:      GoogleSheetRowStoreConfig{Columns: []string{"col1", "col2"}},
 	}
 	stmt := newGoogleSheetSelectStmt(store, nil, []string{})
@@ -201,7 +203,7 @@ func TestSelectStmt_Exec(t *testing.T) {
 		wrapper := &sheets.MockWrapper{}
 		store := &GoogleSheetRowStore{
 			wrapper:     wrapper,
-			colsMapping: map[string]colIdx{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}},
+			colsMapping: map[string]common.ColIdx{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}},
 		}
 		o := 0
 		stmt := newGoogleSheetSelectStmt(store, &o, []string{"col1", "col2"})
@@ -213,7 +215,7 @@ func TestSelectStmt_Exec(t *testing.T) {
 		wrapper := &sheets.MockWrapper{}
 		store := &GoogleSheetRowStore{
 			wrapper:     wrapper,
-			colsMapping: map[string]colIdx{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}},
+			colsMapping: map[string]common.ColIdx{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}},
 		}
 		var o []int
 		stmt := newGoogleSheetSelectStmt(store, o, []string{"col1", "col2"})
@@ -225,7 +227,7 @@ func TestSelectStmt_Exec(t *testing.T) {
 		wrapper := &sheets.MockWrapper{}
 		store := &GoogleSheetRowStore{
 			wrapper:     wrapper,
-			colsMapping: map[string]colIdx{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}},
+			colsMapping: map[string]common.ColIdx{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}},
 		}
 		stmt := newGoogleSheetSelectStmt(store, nil, []string{"col1", "col2"})
 
@@ -236,7 +238,7 @@ func TestSelectStmt_Exec(t *testing.T) {
 		wrapper := &sheets.MockWrapper{QueryRowsError: errors.New("some error")}
 		store := &GoogleSheetRowStore{
 			wrapper:     wrapper,
-			colsMapping: map[string]colIdx{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}},
+			colsMapping: map[string]common.ColIdx{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}},
 		}
 		var out []int
 		stmt := newGoogleSheetSelectStmt(store, &out, []string{"col1", "col2"})
@@ -252,7 +254,7 @@ func TestSelectStmt_Exec(t *testing.T) {
 		}}}
 		store := &GoogleSheetRowStore{
 			wrapper:     wrapper,
-			colsMapping: map[string]colIdx{rowIdxCol: {"A", 0}, "name": {"B", 1}, "age": {"C", 2}, "dob": {"D", 3}},
+			colsMapping: map[string]common.ColIdx{rowIdxCol: {"A", 0}, "name": {"B", 1}, "age": {"C", 2}, "dob": {"D", 3}},
 			config: GoogleSheetRowStoreConfig{
 				Columns: []string{"name", "age", "dob"},
 			},
@@ -277,7 +279,7 @@ func TestSelectStmt_Exec(t *testing.T) {
 		}}}
 		store := &GoogleSheetRowStore{
 			wrapper:     wrapper,
-			colsMapping: map[string]colIdx{rowIdxCol: {"A", 0}, "name": {"B", 1}, "age": {"C", 2}, "dob": {"D", 3}},
+			colsMapping: map[string]common.ColIdx{rowIdxCol: {"A", 0}, "name": {"B", 1}, "age": {"C", 2}, "dob": {"D", 3}},
 			config: GoogleSheetRowStoreConfig{
 				Columns: []string{"name", "age", "dob"},
 			},
@@ -300,7 +302,7 @@ func TestGoogleSheetInsertStmt_convertRowToSlice(t *testing.T) {
 	wrapper := &sheets.MockWrapper{}
 	store := &GoogleSheetRowStore{
 		wrapper:     wrapper,
-		colsMapping: map[string]colIdx{rowIdxCol: {"A", 0}, "name": {"B", 1}, "age": {"C", 2}, "dob": {"D", 3}},
+		colsMapping: map[string]common.ColIdx{rowIdxCol: {"A", 0}, "name": {"B", 1}, "age": {"C", 2}, "dob": {"D", 3}},
 		config: GoogleSheetRowStoreConfig{
 			Columns: []string{"name", "age", "dob"},
 		},
@@ -368,7 +370,7 @@ func TestGoogleSheetUpdateStmt_generateBatchUpdateRequests(t *testing.T) {
 	store := &GoogleSheetRowStore{
 		wrapper:     wrapper,
 		sheetName:   "sheet1",
-		colsMapping: map[string]colIdx{rowIdxCol: {"A", 0}, "name": {"B", 1}, "age": {"C", 2}, "dob": {"D", 3}},
+		colsMapping: map[string]common.ColIdx{rowIdxCol: {"A", 0}, "name": {"B", 1}, "age": {"C", 2}, "dob": {"D", 3}},
 		config: GoogleSheetRowStoreConfig{
 			Columns: []string{"name", "age", "dob"},
 		},
@@ -380,19 +382,19 @@ func TestGoogleSheetUpdateStmt_generateBatchUpdateRequests(t *testing.T) {
 		requests, err := stmt.generateBatchUpdateRequests([]int64{1, 2})
 		expected := []sheets.BatchUpdateRowsRequest{
 			{
-				A1Range: getA1Range(store.sheetName, "B1"),
+				A1Range: common.GetA1Range(store.sheetName, "B1"),
 				Values:  [][]interface{}{{"'name1"}},
 			},
 			{
-				A1Range: getA1Range(store.sheetName, "B2"),
+				A1Range: common.GetA1Range(store.sheetName, "B2"),
 				Values:  [][]interface{}{{"'name1"}},
 			},
 			{
-				A1Range: getA1Range(store.sheetName, "C1"),
+				A1Range: common.GetA1Range(store.sheetName, "C1"),
 				Values:  [][]interface{}{{int64(100)}},
 			},
 			{
-				A1Range: getA1Range(store.sheetName, "C2"),
+				A1Range: common.GetA1Range(store.sheetName, "C2"),
 				Values:  [][]interface{}{{int64(100)}},
 			},
 		}
@@ -407,19 +409,19 @@ func TestGoogleSheetUpdateStmt_generateBatchUpdateRequests(t *testing.T) {
 		requests, err := stmt.generateBatchUpdateRequests([]int64{1, 2})
 		expected := []sheets.BatchUpdateRowsRequest{
 			{
-				A1Range: getA1Range(store.sheetName, "B1"),
+				A1Range: common.GetA1Range(store.sheetName, "B1"),
 				Values:  [][]interface{}{{"'name1"}},
 			},
 			{
-				A1Range: getA1Range(store.sheetName, "B2"),
+				A1Range: common.GetA1Range(store.sheetName, "B2"),
 				Values:  [][]interface{}{{"'name1"}},
 			},
 			{
-				A1Range: getA1Range(store.sheetName, "C1"),
+				A1Range: common.GetA1Range(store.sheetName, "C1"),
 				Values:  [][]interface{}{{int64(9007199254740992)}},
 			},
 			{
-				A1Range: getA1Range(store.sheetName, "C2"),
+				A1Range: common.GetA1Range(store.sheetName, "C2"),
 				Values:  [][]interface{}{{int64(9007199254740992)}},
 			},
 		}

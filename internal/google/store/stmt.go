@@ -1,9 +1,11 @@
-package freedb
+package store
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/FreeLeh/GoFreeDB/internal/common"
+	"github.com/FreeLeh/GoFreeDB/internal/models"
 	"reflect"
 	"strconv"
 	"strings"
@@ -30,7 +32,7 @@ func (q *queryBuilder) Where(condition string, args ...interface{}) *queryBuilde
 	return q
 }
 
-func (q *queryBuilder) OrderBy(ordering []ColumnOrderBy) *queryBuilder {
+func (q *queryBuilder) OrderBy(ordering []models.ColumnOrderBy) *queryBuilder {
 	orderBy := make([]string, 0, len(ordering))
 	for _, o := range ordering {
 		orderBy = append(orderBy, o.Column+" "+string(o.OrderBy))
@@ -265,7 +267,7 @@ func (s *GoogleSheetSelectStmt) Where(condition string, args ...interface{}) *Go
 // OrderBy specifies the column ordering.
 //
 // The default value is no ordering specified.
-func (s *GoogleSheetSelectStmt) OrderBy(ordering []ColumnOrderBy) *GoogleSheetSelectStmt {
+func (s *GoogleSheetSelectStmt) OrderBy(ordering []models.ColumnOrderBy) *GoogleSheetSelectStmt {
 	s.queryBuilder.OrderBy(ordering)
 	return s
 }
@@ -311,7 +313,7 @@ func (s *GoogleSheetSelectStmt) Exec(ctx context.Context) error {
 	}
 
 	m := s.buildQueryResultMap(result)
-	return mapstructureDecode(m, s.output)
+	return common.MapStructureDecode(m, s.output)
 }
 
 func (s *GoogleSheetSelectStmt) buildQueryResultMap(original sheets.QueryRowsResult) []map[string]interface{} {
@@ -390,7 +392,7 @@ func (s *GoogleSheetInsertStmt) convertRowToSlice(row interface{}) ([]interface{
 	}
 
 	var output map[string]interface{}
-	if err := mapstructureDecode(row, &output); err != nil {
+	if err := common.MapStructureDecode(row, &output); err != nil {
 		return nil, err
 	}
 
@@ -399,11 +401,11 @@ func (s *GoogleSheetInsertStmt) convertRowToSlice(row interface{}) ([]interface{
 
 	for key, value := range output {
 		if colIdx, ok := s.store.colsMapping[key]; ok {
-			escapedValue := escapeValue(value)
-			if err := checkIEEE754SafeInteger(escapedValue); err != nil {
+			escapedValue := common.EscapeValue(value)
+			if err := common.CheckIEEE754SafeInteger(escapedValue); err != nil {
 				return nil, err
 			}
-			result[colIdx.idx] = escapedValue
+			result[colIdx.Idx] = escapedValue
 		}
 	}
 
@@ -431,7 +433,7 @@ func (s *GoogleSheetInsertStmt) Exec(ctx context.Context) error {
 	_, err := s.store.wrapper.OverwriteRows(
 		ctx,
 		s.store.spreadsheetID,
-		getA1Range(s.store.sheetName, defaultRowFullTableRange),
+		common.GetA1Range(s.store.sheetName, defaultRowFullTableRange),
 		convertedRows,
 	)
 	return err
@@ -499,15 +501,15 @@ func (s *GoogleSheetUpdateStmt) generateBatchUpdateRequests(rowIndices []int64) 
 			return nil, fmt.Errorf("failed to update, unknown column name provided: %s", col)
 		}
 
-		escapedValue := escapeValue(value)
-		if err := checkIEEE754SafeInteger(escapedValue); err != nil {
+		escapedValue := common.EscapeValue(value)
+		if err := common.CheckIEEE754SafeInteger(escapedValue); err != nil {
 			return nil, err
 		}
 
 		for _, rowIdx := range rowIndices {
-			a1Range := colIdx.name + strconv.FormatInt(rowIdx, 10)
+			a1Range := colIdx.Name + strconv.FormatInt(rowIdx, 10)
 			requests = append(requests, sheets.BatchUpdateRowsRequest{
-				A1Range: getA1Range(s.store.sheetName, a1Range),
+				A1Range: common.GetA1Range(s.store.sheetName, a1Range),
 				Values:  [][]interface{}{{escapedValue}},
 			})
 		}
@@ -641,7 +643,7 @@ func getRowIndices(ctx context.Context, store *GoogleSheetRowStore, selectStmt s
 func generateRowA1Ranges(sheetName string, indices []int64) []string {
 	locations := make([]string, len(indices))
 	for i := range indices {
-		locations[i] = getA1Range(
+		locations[i] = common.GetA1Range(
 			sheetName,
 			fmt.Sprintf(rowDeleteRangeTemplate, indices[i], indices[i]),
 		)

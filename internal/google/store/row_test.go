@@ -1,10 +1,13 @@
-package freedb
+package store
 
 import (
 	"context"
 	"fmt"
+	"github.com/FreeLeh/GoFreeDB/internal/common"
+	"github.com/FreeLeh/GoFreeDB/internal/models"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/FreeLeh/GoFreeDB/google/auth"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +24,7 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 	if !shouldRun {
 		t.Skip("integration test should be run only in GitHub Actions")
 	}
-	sheetName := fmt.Sprintf("integration_row_%d", currentTimeMs())
+	sheetName := fmt.Sprintf("integration_row_%d", common.CurrentTimeMs())
 
 	googleAuth, err := auth.NewServiceFromJSON([]byte(authJSON), auth.GoogleSheetsReadWrite, auth.ServiceConfig{})
 	if err != nil {
@@ -35,16 +38,19 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 		GoogleSheetRowStoreConfig{Columns: []string{"name", "age", "dob"}},
 	)
 	defer func() {
+		time.Sleep(time.Second)
 		deleteSheet(t, db.wrapper, spreadsheetID, []string{db.sheetName})
 		_ = db.Close(context.Background())
 	}()
 
 	var out []testPerson
 
+	time.Sleep(time.Second)
 	err = db.Select(&out, "name", "age").Offset(10).Limit(10).Exec(context.Background())
 	assert.Nil(t, err)
 	assert.Empty(t, out)
 
+	time.Sleep(time.Second)
 	err = db.Insert(
 		testPerson{"name1", 10, "1999-01-01"},
 		testPerson{"name2", 11, "2000-01-01"},
@@ -52,9 +58,11 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Nil type
+	time.Sleep(time.Second)
 	err = db.Insert(nil).Exec(context.Background())
 	assert.NotNil(t, err)
 
+	time.Sleep(time.Second)
 	err = db.Insert(testPerson{
 		Name: "name3",
 		Age:  9007199254740992,
@@ -62,6 +70,7 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 	}).Exec(context.Background())
 	assert.Nil(t, err)
 
+	time.Sleep(time.Second)
 	err = db.Update(map[string]interface{}{"name": "name4"}).
 		Where("age = ?", 10).
 		Exec(context.Background())
@@ -71,20 +80,24 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 		{"name2", 11, "2000-01-01"},
 		{"name3", 9007199254740992, "2001-01-01"},
 	}
+
+	time.Sleep(time.Second)
 	err = db.Select(&out, "name", "age", "dob").
 		Where("name = ? OR name = ?", "name2", "name3").
-		OrderBy([]ColumnOrderBy{{"name", OrderByAsc}}).
+		OrderBy([]models.ColumnOrderBy{{"name", models.OrderByAsc}}).
 		Limit(2).
 		Exec(context.Background())
 	assert.Nil(t, err)
 	assert.Equal(t, expected, out)
 
+	time.Sleep(time.Second)
 	count, err := db.Count().
 		Where("name = ? OR name = ?", "name2", "name3").
 		Exec(context.Background())
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(2), count)
 
+	time.Sleep(time.Second)
 	err = db.Delete().Where("name = ?", "name4").Exec(context.Background())
 	assert.Nil(t, err)
 }
@@ -94,7 +107,7 @@ func TestGoogleSheetRowStore_Integration_EdgeCases(t *testing.T) {
 	if !shouldRun {
 		t.Skip("integration test should be run only in GitHub Actions")
 	}
-	sheetName := fmt.Sprintf("integration_row_%d", currentTimeMs())
+	sheetName := fmt.Sprintf("integration_row_%d", common.CurrentTimeMs())
 
 	googleAuth, err := auth.NewServiceFromJSON([]byte(authJSON), auth.GoogleSheetsReadWrite, auth.ServiceConfig{})
 	if err != nil {
@@ -108,25 +121,30 @@ func TestGoogleSheetRowStore_Integration_EdgeCases(t *testing.T) {
 		GoogleSheetRowStoreConfig{Columns: []string{"name", "age", "dob"}},
 	)
 	defer func() {
+		time.Sleep(time.Second)
 		deleteSheet(t, db.wrapper, spreadsheetID, []string{db.sheetName})
 		_ = db.Close(context.Background())
 	}()
 
 	// Non-struct types
+	time.Sleep(time.Second)
 	err = db.Insert([]interface{}{"name3", 12, "2001-01-01"}).Exec(context.Background())
 	assert.NotNil(t, err)
 
 	// IEEE 754 unsafe integer
+	time.Sleep(time.Second)
 	err = db.Insert([]interface{}{"name3", 9007199254740993, "2001-01-01"}).Exec(context.Background())
 	assert.NotNil(t, err)
 
 	// IEEE 754 unsafe integer
+	time.Sleep(time.Second)
 	err = db.Insert(
 		testPerson{"name1", 10, "1999-01-01"},
 		testPerson{"name2", 11, "2000-01-01"},
 	).Exec(context.Background())
 	assert.Nil(t, err)
 
+	time.Sleep(time.Second)
 	err = db.Update(map[string]interface{}{"name": "name4", "age": int64(9007199254740993)}).
 		Exec(context.Background())
 	assert.NotNil(t, err)
