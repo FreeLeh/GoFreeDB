@@ -48,14 +48,14 @@ type GoogleSheetRowStore struct {
 // "output" must be a pointer to a slice of a data type.
 // The conversion from the Google Sheet data into the slice will be done using https://github.com/mitchellh/mapstructure.
 //
-// If you are providing a slice of structs into the "output" parameter and you want to define the mapping between the
+// If you are providing a slice of structs into the "output" parameter, and you want to define the mapping between the
 // column name with the field name, you should add a "db" struct tag.
 //
-//	// Without the `db` struct tag, the column name used will be "Name" and "Age".
-//	type Person struct {
-//	    Name string `db:"name"`
-//	    Age int `db:"age"`
-//	}
+//		// Without the `db` struct tag, the column name used will be "Name" and "Age".
+//		type Person struct {
+//	    	Name string `db:"name"`
+//	    	Age int `db:"age"`
+//		}
 //
 // Please note that calling Select() does not execute the query yet.
 // Call GoogleSheetSelectStmt.Exec to actually execute the query.
