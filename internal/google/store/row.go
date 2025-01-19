@@ -153,7 +153,7 @@ func NewGoogleSheetRowStore(
 		panic(fmt.Errorf("error creating sheets wrapper: %w", err))
 	}
 
-	config = injectTimestampCol(config)
+	config = injectRIDCol(config)
 
 	store := &GoogleSheetRowStore{
 		wrapper:       wrapper,
@@ -173,7 +173,7 @@ func NewGoogleSheetRowStore(
 // The additional rowIdxCol column is needed to differentiate which row is truly empty and which one is not.
 // Currently, we use this for detecting which rows are really empty for UPDATE without WHERE clause.
 // Otherwise, it will always update all rows (instead of the non-empty rows only).
-func injectTimestampCol(config GoogleSheetRowStoreConfig) GoogleSheetRowStoreConfig {
+func injectRIDCol(config GoogleSheetRowStoreConfig) GoogleSheetRowStoreConfig {
 	newCols := make([]string, 0, len(config.Columns)+1)
 	newCols = append(newCols, rowIdxCol)
 	newCols = append(newCols, config.Columns...)
