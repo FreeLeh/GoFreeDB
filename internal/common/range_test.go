@@ -1,15 +1,14 @@
-package freedb
+package common
 
 import (
-	"testing"
-
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestGetA1Range(t *testing.T) {
-	assert.Equal(t, "sheet!A1:A50", getA1Range("sheet", "A1:A50"))
-	assert.Equal(t, "sheet!A1", getA1Range("sheet", "A1"))
-	assert.Equal(t, "sheet!A", getA1Range("sheet", "A"))
+	assert.Equal(t, "sheet!A1:A50", GetA1Range("sheet", "A1:A50"))
+	assert.Equal(t, "sheet!A1", GetA1Range("sheet", "A1"))
+	assert.Equal(t, "sheet!A", GetA1Range("sheet", "A"))
 }
 
 func TestGenerateColumnName(t *testing.T) {
@@ -62,7 +61,7 @@ func TestGenerateColumnName(t *testing.T) {
 
 	for _, c := range tc {
 		t.Run(c.name, func(t *testing.T) {
-			assert.Equal(t, c.expected, generateColumnName(c.input))
+			assert.Equal(t, c.expected, GenerateColumnName(c.input))
 		})
 	}
 }
@@ -71,19 +70,19 @@ func TestGenerateColumnMapping(t *testing.T) {
 	tc := []struct {
 		name     string
 		input    []string
-		expected map[string]colIdx
+		expected map[string]ColIdx
 	}{
 		{
 			name:  "single_column",
 			input: []string{"col1"},
-			expected: map[string]colIdx{
+			expected: map[string]ColIdx{
 				"col1": {"A", 0},
 			},
 		},
 		{
 			name:  "three_column",
 			input: []string{"col1", "col2", "col3"},
-			expected: map[string]colIdx{
+			expected: map[string]ColIdx{
 				"col1": {"A", 0},
 				"col2": {"B", 1},
 				"col3": {"C", 2},
@@ -96,7 +95,7 @@ func TestGenerateColumnMapping(t *testing.T) {
 				"c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20",
 				"c21", "c22", "c23", "c24", "c25", "c26", "c27", "c28",
 			},
-			expected: map[string]colIdx{
+			expected: map[string]ColIdx{
 				"c1": {"A", 0}, "c2": {"B", 1}, "c3": {"C", 2}, "c4": {"D", 3},
 				"c5": {"E", 4}, "c6": {"F", 5}, "c7": {"G", 6}, "c8": {"H", 7},
 				"c9": {"I", 8}, "c10": {"J", 9}, "c11": {"K", 10}, "c12": {"L", 11},
@@ -110,36 +109,7 @@ func TestGenerateColumnMapping(t *testing.T) {
 
 	for _, c := range tc {
 		t.Run(c.name, func(t *testing.T) {
-			assert.Equal(t, c.expected, generateColumnMapping(c.input))
+			assert.Equal(t, c.expected, GenerateColumnMapping(c.input))
 		})
 	}
-}
-
-func TestEscapeValue(t *testing.T) {
-	assert.Equal(t, "'blah", escapeValue("blah"))
-	assert.Equal(t, 1, escapeValue(1))
-	assert.Equal(t, true, escapeValue(true))
-}
-
-func TestCheckIEEE754SafeInteger(t *testing.T) {
-	assert.Nil(t, checkIEEE754SafeInteger(int64(0)))
-	assert.Nil(t, checkIEEE754SafeInteger(int(0)))
-	assert.Nil(t, checkIEEE754SafeInteger(uint(0)))
-
-	// -(2^53)
-	assert.Nil(t, checkIEEE754SafeInteger(int64(-9007199254740992)))
-
-	// (2^53)
-	assert.Nil(t, checkIEEE754SafeInteger(int64(9007199254740992)))
-	assert.Nil(t, checkIEEE754SafeInteger(uint64(9007199254740992)))
-
-	// Below and above the limit.
-	assert.NotNil(t, checkIEEE754SafeInteger(int64(-9007199254740993)))
-	assert.NotNil(t, checkIEEE754SafeInteger(int64(9007199254740993)))
-	assert.NotNil(t, checkIEEE754SafeInteger(uint64(9007199254740993)))
-
-	// Other types
-	assert.Nil(t, checkIEEE754SafeInteger("blah"))
-	assert.Nil(t, checkIEEE754SafeInteger(true))
-	assert.Nil(t, checkIEEE754SafeInteger([]byte("something")))
 }

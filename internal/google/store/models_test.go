@@ -1,4 +1,4 @@
-package freedb
+package store
 
 import (
 	"context"

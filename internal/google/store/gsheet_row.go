@@ -1,9 +1,10 @@
-package freedb
+package store
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/FreeLeh/GoFreeDB/internal/common"
 	"time"
 
 	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
@@ -33,7 +34,7 @@ type GoogleSheetRowStore struct {
 	wrapper       sheetsWrapper
 	spreadsheetID string
 	sheetName     string
-	colsMapping   colsMapping
+	colsMapping   common.ColsMapping
 	config        GoogleSheetRowStoreConfig
 }
 
@@ -50,11 +51,11 @@ type GoogleSheetRowStore struct {
 // If you are providing a slice of structs into the "output" parameter and you want to define the mapping between the
 // column name with the field name, you should add a "db" struct tag.
 //
-//     // Without the `db` struct tag, the column name used will be "Name" and "Age".
-//     type Person struct {
-//         Name string `db:"name"`
-//         Age int `db:"age"`
-//     }
+//	// Without the `db` struct tag, the column name used will be "Name" and "Age".
+//	type Person struct {
+//	    Name string `db:"name"`
+//	    Age int `db:"age"`
+//	}
 //
 // Please note that calling Select() does not execute the query yet.
 // Call GoogleSheetSelectStmt.Exec to actually execute the query.
@@ -114,7 +115,7 @@ func (s *GoogleSheetRowStore) ensureHeaders() error {
 	if _, err := s.wrapper.Clear(
 		ctx,
 		s.spreadsheetID,
-		[]string{getA1Range(s.sheetName, defaultRowHeaderRange)},
+		[]string{common.GetA1Range(s.sheetName, defaultRowHeaderRange)},
 	); err != nil {
 		return err
 	}
@@ -127,7 +128,7 @@ func (s *GoogleSheetRowStore) ensureHeaders() error {
 	if _, err := s.wrapper.UpdateRows(
 		ctx,
 		s.spreadsheetID,
-		getA1Range(s.sheetName, defaultRowHeaderRange),
+		common.GetA1Range(s.sheetName, defaultRowHeaderRange),
 		[][]interface{}{cols},
 	); err != nil {
 		return err
@@ -158,7 +159,7 @@ func NewGoogleSheetRowStore(
 		wrapper:       wrapper,
 		spreadsheetID: spreadsheetID,
 		sheetName:     sheetName,
-		colsMapping:   generateColumnMapping(config.Columns),
+		colsMapping:   common.GenerateColumnMapping(config.Columns),
 		config:        config,
 	}
 

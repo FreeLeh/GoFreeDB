@@ -1,16 +1,19 @@
-package freedb
+package store
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/FreeLeh/GoFreeDB/internal/codec"
+	"github.com/FreeLeh/GoFreeDB/internal/common"
+	"github.com/FreeLeh/GoFreeDB/internal/models"
 
 	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
 )
 
 // GoogleSheetKVStoreConfig defines a list of configurations that can be used to customise how the GoogleSheetKVStore works.
 type GoogleSheetKVStoreConfig struct {
-	Mode  KVMode
+	Mode  models.KVMode
 	codec Codec
 }
 
@@ -44,9 +47,9 @@ type GoogleSheetKVStore struct {
 //     This method will also recognise and handle such cases.
 //   - There is only 1 API call behind the scene.
 func (s *GoogleSheetKVStore) Get(ctx context.Context, key string) ([]byte, error) {
-	query := fmt.Sprintf(kvGetDefaultQueryTemplate, key, getA1Range(s.sheetName, defaultKVTableRange))
-	if s.config.Mode == KVModeAppendOnly {
-		query = fmt.Sprintf(kvGetAppendQueryTemplate, key, getA1Range(s.sheetName, defaultKVTableRange))
+	query := fmt.Sprintf(kvGetDefaultQueryTemplate, key, common.GetA1Range(s.sheetName, defaultKVTableRange))
+	if s.config.Mode == models.KVModeAppendOnly {
+		query = fmt.Sprintf(kvGetAppendQueryTemplate, key, common.GetA1Range(s.sheetName, defaultKVTableRange))
 	}
 
 	result, err := s.wrapper.UpdateRows(
@@ -59,12 +62,12 @@ func (s *GoogleSheetKVStore) Get(ctx context.Context, key string) ([]byte, error
 		return nil, err
 	}
 	if len(result.UpdatedValues) == 0 || len(result.UpdatedValues[0]) == 0 {
-		return nil, fmt.Errorf("%w: %s", ErrKeyNotFound, key)
+		return nil, fmt.Errorf("%w: %s", models.ErrKeyNotFound, key)
 	}
 
 	value := result.UpdatedValues[0][0]
-	if value == naValue || value == "" {
-		return nil, fmt.Errorf("%w: %s", ErrKeyNotFound, key)
+	if value == models.NAValue || value == "" {
+		return nil, fmt.Errorf("%w: %s", models.ErrKeyNotFound, key)
 	}
 	return s.config.codec.Decode(value.(string))
 }
@@ -84,7 +87,7 @@ func (s *GoogleSheetKVStore) Set(ctx context.Context, key string, value []byte) 
 	if err != nil {
 		return err
 	}
-	if s.config.Mode == KVModeAppendOnly {
+	if s.config.Mode == models.KVModeAppendOnly {
 		return s.setAppendOnly(ctx, key, encoded)
 	}
 	return s.setDefault(ctx, key, encoded)
@@ -94,20 +97,20 @@ func (s *GoogleSheetKVStore) setAppendOnly(ctx context.Context, key string, enco
 	_, err := s.wrapper.InsertRows(
 		ctx,
 		s.spreadsheetID,
-		getA1Range(s.sheetName, defaultKVTableRange),
-		[][]interface{}{{key, encoded, currentTimeMs()}},
+		common.GetA1Range(s.sheetName, defaultKVTableRange),
+		[][]interface{}{{key, encoded, common.CurrentTimeMs()}},
 	)
 	return err
 }
 
 func (s *GoogleSheetKVStore) setDefault(ctx context.Context, key string, encoded string) error {
 	a1Range, err := s.findKeyA1Range(ctx, key)
-	if errors.Is(err, ErrKeyNotFound) {
+	if errors.Is(err, models.ErrKeyNotFound) {
 		_, err := s.wrapper.OverwriteRows(
 			ctx,
 			s.spreadsheetID,
-			getA1Range(s.sheetName, defaultKVFirstRowRange),
-			[][]interface{}{{key, encoded, currentTimeMs()}},
+			common.GetA1Range(s.sheetName, defaultKVFirstRowRange),
+			[][]interface{}{{key, encoded, common.CurrentTimeMs()}},
 		)
 		return err
 	}
@@ -120,7 +123,7 @@ func (s *GoogleSheetKVStore) setDefault(ctx context.Context, key string, encoded
 		ctx,
 		s.spreadsheetID,
 		a1Range.Original,
-		[][]interface{}{{key, encoded, currentTimeMs()}},
+		[][]interface{}{{key, encoded, common.CurrentTimeMs()}},
 	)
 	return err
 }
@@ -130,25 +133,25 @@ func (s *GoogleSheetKVStore) findKeyA1Range(ctx context.Context, key string) (sh
 		ctx,
 		s.spreadsheetID,
 		s.scratchpadLocation.Original,
-		[][]interface{}{{fmt.Sprintf(kvFindKeyA1RangeQueryTemplate, key, getA1Range(s.sheetName, defaultKVKeyColRange))}},
+		[][]interface{}{{fmt.Sprintf(kvFindKeyA1RangeQueryTemplate, key, common.GetA1Range(s.sheetName, defaultKVKeyColRange))}},
 	)
 	if err != nil {
 		return sheets.A1Range{}, err
 	}
 	if len(result.UpdatedValues) == 0 || len(result.UpdatedValues[0]) == 0 {
-		return sheets.A1Range{}, fmt.Errorf("%w: %s", ErrKeyNotFound, key)
+		return sheets.A1Range{}, fmt.Errorf("%w: %s", models.ErrKeyNotFound, key)
 	}
 
 	offset := result.UpdatedValues[0][0].(string)
-	if offset == naValue || offset == "" {
-		return sheets.A1Range{}, fmt.Errorf("%w: %s", ErrKeyNotFound, key)
+	if offset == models.NAValue || offset == "" {
+		return sheets.A1Range{}, fmt.Errorf("%w: %s", models.ErrKeyNotFound, key)
 	}
 
 	// Note that the MATCH() query only returns the relative offset from the given range.
 	// Here we need to return the full range where the key is found.
 	// Hence, we need to get the row offset first, and assume that each row has only 3 rows: A B C.
 	// Otherwise, the DELETE() function will not work properly (we need to clear the full row, not just the key cell).
-	a1Range := getA1Range(s.sheetName, fmt.Sprintf("A%s:C%s", offset, offset))
+	a1Range := common.GetA1Range(s.sheetName, fmt.Sprintf("A%s:C%s", offset, offset))
 	return sheets.NewA1Range(a1Range), nil
 }
 
@@ -163,7 +166,7 @@ func (s *GoogleSheetKVStore) findKeyA1Range(ctx context.Context, key string) (sh
 //   - It creates a new row at the bottom of the sheet with a tombstone value and timestamp.
 //   - There is only 1 API call behind the scene.
 func (s *GoogleSheetKVStore) Delete(ctx context.Context, key string) error {
-	if s.config.Mode == KVModeAppendOnly {
+	if s.config.Mode == models.KVModeAppendOnly {
 		return s.deleteAppendOnly(ctx, key)
 	}
 	return s.deleteDefault(ctx, key)
@@ -175,7 +178,7 @@ func (s *GoogleSheetKVStore) deleteAppendOnly(ctx context.Context, key string) e
 
 func (s *GoogleSheetKVStore) deleteDefault(ctx context.Context, key string) error {
 	a1Range, err := s.findKeyA1Range(ctx, key)
-	if errors.Is(err, ErrKeyNotFound) {
+	if errors.Is(err, models.ErrKeyNotFound) {
 		return nil
 	}
 	if err != nil {
@@ -229,6 +232,6 @@ func NewGoogleSheetKVStore(
 }
 
 func applyGoogleSheetKVStoreConfig(config GoogleSheetKVStoreConfig) GoogleSheetKVStoreConfig {
-	config.codec = &basicCodec{}
+	config.codec = codec.NewBasic()
 	return config
 }

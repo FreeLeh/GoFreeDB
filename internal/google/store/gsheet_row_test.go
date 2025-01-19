@@ -1,8 +1,10 @@
-package freedb
+package store
 
 import (
 	"context"
 	"fmt"
+	"github.com/FreeLeh/GoFreeDB/internal/common"
+	"github.com/FreeLeh/GoFreeDB/internal/models"
 	"strconv"
 	"testing"
 
@@ -21,7 +23,7 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 	if !shouldRun {
 		t.Skip("integration test should be run only in GitHub Actions")
 	}
-	sheetName := fmt.Sprintf("integration_row_%d", currentTimeMs())
+	sheetName := fmt.Sprintf("integration_row_%d", common.CurrentTimeMs())
 
 	googleAuth, err := auth.NewServiceFromJSON([]byte(authJSON), auth.GoogleSheetsReadWrite, auth.ServiceConfig{})
 	if err != nil {
@@ -73,7 +75,7 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 	}
 	err = db.Select(&out, "name", "age", "dob").
 		Where("name = ? OR name = ?", "name2", "name3").
-		OrderBy([]ColumnOrderBy{{"name", OrderByAsc}}).
+		OrderBy([]models.ColumnOrderBy{{"name", models.OrderByAsc}}).
 		Limit(2).
 		Exec(context.Background())
 	assert.Nil(t, err)
@@ -94,7 +96,7 @@ func TestGoogleSheetRowStore_Integration_EdgeCases(t *testing.T) {
 	if !shouldRun {
 		t.Skip("integration test should be run only in GitHub Actions")
 	}
-	sheetName := fmt.Sprintf("integration_row_%d", currentTimeMs())
+	sheetName := fmt.Sprintf("integration_row_%d", common.CurrentTimeMs())
 
 	googleAuth, err := auth.NewServiceFromJSON([]byte(authJSON), auth.GoogleSheetsReadWrite, auth.ServiceConfig{})
 	if err != nil {
