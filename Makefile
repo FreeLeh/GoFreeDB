@@ -6,3 +6,6 @@ test-race:
 
 test-race-repeated:
 	go test -tags=gofreedb_test -v -race -count=10 ./...
+
+test-with-coverage:
+	go test -v -count=1 -tags=gofreedb_test -cover ./... -coverprofile coverage.out -coverpkg ./...
