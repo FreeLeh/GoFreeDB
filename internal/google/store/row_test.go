@@ -112,7 +112,9 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 	var out2 []testPerson
 	expected = []testPerson{
 		{"name100", 10, "1999-01-01"},
+		{"name2", 11, "2000-01-01"},
 		{"name200", 11, "2000-01-01"},
+		{"name3", 9007199254740992, "2001-01-01"},
 		{"name300", 12, "2001-01-01"},
 	}
 
