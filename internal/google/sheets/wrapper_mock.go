@@ -1,6 +1,9 @@
 package sheets
 
-import "context"
+import (
+	"context"
+	"github.com/FreeLeh/GoFreeDB/internal/models"
+)
 
 type MockWrapper struct {
 	CreateSpreadsheetResult string
@@ -27,42 +30,85 @@ type MockWrapper struct {
 	ClearError  error
 }
 
-func (w *MockWrapper) CreateSpreadsheet(ctx context.Context, title string) (string, error) {
+func (w *MockWrapper) CreateSpreadsheet(
+	ctx context.Context,
+	title string,
+) (string, error) {
 	return w.CreateSpreadsheetResult, w.CreateSpreadsheetError
 }
 
-func (w *MockWrapper) GetSheetNameToID(ctx context.Context, spreadsheetID string) (map[string]int64, error) {
+func (w *MockWrapper) GetSheetNameToID(
+	ctx context.Context,
+	spreadsheetID string,
+) (map[string]int64, error) {
 	return nil, nil
 }
 
-func (w *MockWrapper) DeleteSheets(ctx context.Context, spreadsheetID string, sheetIDs []int64) error {
+func (w *MockWrapper) DeleteSheets(
+	ctx context.Context,
+	spreadsheetID string,
+	sheetIDs []int64,
+) error {
 	return nil
 }
 
-func (w *MockWrapper) CreateSheet(ctx context.Context, spreadsheetID string, sheetName string) error {
+func (w *MockWrapper) CreateSheet(
+	ctx context.Context,
+	spreadsheetID string,
+	sheetName string,
+) error {
 	return w.CreateSheetError
 }
 
-func (w *MockWrapper) InsertRows(ctx context.Context, spreadsheetID string, a1Range string, values [][]interface{}) (InsertRowsResult, error) {
+func (w *MockWrapper) InsertRows(
+	ctx context.Context,
+	spreadsheetID string,
+	a1Range models.A1Range,
+	values [][]interface{},
+) (InsertRowsResult, error) {
 	return w.InsertRowsResult, w.InsertRowsError
 }
 
-func (w *MockWrapper) OverwriteRows(ctx context.Context, spreadsheetID string, a1Range string, values [][]interface{}) (InsertRowsResult, error) {
+func (w *MockWrapper) OverwriteRows(
+	ctx context.Context,
+	spreadsheetID string,
+	a1Range models.A1Range,
+	values [][]interface{},
+) (InsertRowsResult, error) {
 	return w.OverwriteRowsResult, w.OverwriteRowsError
 }
 
-func (w *MockWrapper) UpdateRows(ctx context.Context, spreadsheetID string, a1Range string, values [][]interface{}) (UpdateRowsResult, error) {
+func (w *MockWrapper) UpdateRows(
+	ctx context.Context,
+	spreadsheetID string,
+	a1Range models.A1Range,
+	values [][]interface{},
+) (UpdateRowsResult, error) {
 	return w.UpdateRowsResult, w.UpdateRowsError
 }
 
-func (w *MockWrapper) BatchUpdateRows(ctx context.Context, spreadsheetID string, requests []BatchUpdateRowsRequest) (BatchUpdateRowsResult, error) {
+func (w *MockWrapper) BatchUpdateRows(
+	ctx context.Context,
+	spreadsheetID string,
+	requests []BatchUpdateRowsRequest,
+) (BatchUpdateRowsResult, error) {
 	return w.BatchUpdateRowsResult, w.BatchUpdateRowsError
 }
 
-func (w *MockWrapper) QueryRows(ctx context.Context, spreadsheetID string, sheetName string, query string, skipHeader bool) (QueryRowsResult, error) {
+func (w *MockWrapper) QueryRows(
+	ctx context.Context,
+	spreadsheetID string,
+	sheetName string,
+	query string,
+	skipHeader bool,
+) (QueryRowsResult, error) {
 	return w.QueryRowsResult, w.QueryRowsError
 }
 
-func (w *MockWrapper) Clear(ctx context.Context, spreadsheetID string, ranges []string) ([]string, error) {
+func (w *MockWrapper) Clear(
+	ctx context.Context,
+	spreadsheetID string,
+	ranges []models.A1Range,
+) ([]string, error) {
 	return w.ClearResult, w.ClearError
 }

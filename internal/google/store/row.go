@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/FreeLeh/GoFreeDB/internal/common"
+	"github.com/FreeLeh/GoFreeDB/internal/models"
 	"time"
 
 	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
@@ -34,7 +34,7 @@ type GoogleSheetRowStore struct {
 	wrapper       sheetsWrapper
 	spreadsheetID string
 	sheetName     string
-	colsMapping   common.ColsMapping
+	colsMapping   models.ColsMapping
 	config        GoogleSheetRowStoreConfig
 }
 
@@ -112,10 +112,11 @@ func (s *GoogleSheetRowStore) ensureHeaders() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
+	a1Range := models.NewA1Range(s.sheetName, defaultRowHeaderRange)
 	if _, err := s.wrapper.Clear(
 		ctx,
 		s.spreadsheetID,
-		[]string{common.GetA1Range(s.sheetName, defaultRowHeaderRange)},
+		[]models.A1Range{a1Range},
 	); err != nil {
 		return err
 	}
@@ -128,7 +129,7 @@ func (s *GoogleSheetRowStore) ensureHeaders() error {
 	if _, err := s.wrapper.UpdateRows(
 		ctx,
 		s.spreadsheetID,
-		common.GetA1Range(s.sheetName, defaultRowHeaderRange),
+		models.NewA1Range(s.sheetName, defaultRowHeaderRange),
 		[][]interface{}{cols},
 	); err != nil {
 		return err
@@ -153,13 +154,13 @@ func NewGoogleSheetRowStore(
 		panic(fmt.Errorf("error creating sheets wrapper: %w", err))
 	}
 
-	config = injectTimestampCol(config)
+	config = injectRIDCol(config)
 
 	store := &GoogleSheetRowStore{
 		wrapper:       wrapper,
 		spreadsheetID: spreadsheetID,
 		sheetName:     sheetName,
-		colsMapping:   common.GenerateColumnMapping(config.Columns),
+		colsMapping:   models.GenerateColumnMapping(config.Columns),
 		config:        config,
 	}
 
@@ -173,7 +174,7 @@ func NewGoogleSheetRowStore(
 // The additional rowIdxCol column is needed to differentiate which row is truly empty and which one is not.
 // Currently, we use this for detecting which rows are really empty for UPDATE without WHERE clause.
 // Otherwise, it will always update all rows (instead of the non-empty rows only).
-func injectTimestampCol(config GoogleSheetRowStoreConfig) GoogleSheetRowStoreConfig {
+func injectRIDCol(config GoogleSheetRowStoreConfig) GoogleSheetRowStoreConfig {
 	newCols := make([]string, 0, len(config.Columns)+1)
 	newCols = append(newCols, rowIdxCol)
 	newCols = append(newCols, config.Columns...)
