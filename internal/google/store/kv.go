@@ -47,9 +47,17 @@ type GoogleSheetKVStore struct {
 //     This method will also recognise and handle such cases.
 //   - There is only 1 API call behind the scene.
 func (s *GoogleSheetKVStore) Get(ctx context.Context, key string) ([]byte, error) {
-	query := fmt.Sprintf(kvGetDefaultQueryTemplate, key, models.NewA1Range(s.sheetName, defaultKVTableRange))
+	query := fmt.Sprintf(
+		kvGetDefaultQueryTemplate,
+		key,
+		models.NewA1Range(s.sheetName, defaultKVTableRange).Original,
+	)
 	if s.config.Mode == models.KVModeAppendOnly {
-		query = fmt.Sprintf(kvGetAppendQueryTemplate, key, models.NewA1Range(s.sheetName, defaultKVTableRange))
+		query = fmt.Sprintf(
+			kvGetAppendQueryTemplate,
+			key,
+			models.NewA1Range(s.sheetName, defaultKVTableRange).Original,
+		)
 	}
 
 	result, err := s.wrapper.UpdateRows(
@@ -136,7 +144,7 @@ func (s *GoogleSheetKVStore) findKeyA1Range(ctx context.Context, key string) (mo
 		[][]interface{}{{fmt.Sprintf(
 			kvFindKeyA1RangeQueryTemplate,
 			key,
-			models.NewA1Range(s.sheetName, defaultKVKeyColRange),
+			models.NewA1Range(s.sheetName, defaultKVKeyColRange).Original,
 		)}},
 	)
 	if err != nil {
