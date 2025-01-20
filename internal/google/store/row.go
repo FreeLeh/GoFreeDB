@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/FreeLeh/GoFreeDB/internal/common"
+	"github.com/FreeLeh/GoFreeDB/internal/models"
 	"time"
 
 	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
@@ -34,7 +34,7 @@ type GoogleSheetRowStore struct {
 	wrapper       sheetsWrapper
 	spreadsheetID string
 	sheetName     string
-	colsMapping   common.ColsMapping
+	colsMapping   models.ColsMapping
 	config        GoogleSheetRowStoreConfig
 }
 
@@ -112,10 +112,11 @@ func (s *GoogleSheetRowStore) ensureHeaders() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
+	a1Range := models.NewA1Range(s.sheetName, defaultRowHeaderRange)
 	if _, err := s.wrapper.Clear(
 		ctx,
 		s.spreadsheetID,
-		[]string{common.GetA1Range(s.sheetName, defaultRowHeaderRange)},
+		[]models.A1Range{a1Range},
 	); err != nil {
 		return err
 	}
@@ -128,7 +129,7 @@ func (s *GoogleSheetRowStore) ensureHeaders() error {
 	if _, err := s.wrapper.UpdateRows(
 		ctx,
 		s.spreadsheetID,
-		common.GetA1Range(s.sheetName, defaultRowHeaderRange),
+		models.NewA1Range(s.sheetName, defaultRowHeaderRange),
 		[][]interface{}{cols},
 	); err != nil {
 		return err
@@ -159,7 +160,7 @@ func NewGoogleSheetRowStore(
 		wrapper:       wrapper,
 		spreadsheetID: spreadsheetID,
 		sheetName:     sheetName,
-		colsMapping:   common.GenerateColumnMapping(config.Columns),
+		colsMapping:   models.GenerateColumnMapping(config.Columns),
 		config:        config,
 	}
 

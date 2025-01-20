@@ -3,12 +3,12 @@ module github.com/FreeLeh/GoFreeDB
 go 1.22
 
 require (
+	github.com/h2non/gock v1.2.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/mock v0.5.0
 	golang.org/x/oauth2 v0.25.0
 	google.golang.org/api v0.217.0
-	gopkg.in/h2non/gock.v1 v1.1.2
 )
 
 require (

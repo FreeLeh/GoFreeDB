@@ -2,11 +2,11 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"net/http"
-	"net/http/httptest"
 	"testing"
+
+	"github.com/h2non/gock"
 )
 
 func TestTenantAccessToken(t *testing.T) {
@@ -66,33 +66,20 @@ func TestTenantAccessToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create test server
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				assert.Equal(t, http.MethodPost, r.Method)
-				assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+			defer gock.Off()
 
-				w.WriteHeader(tt.statusCode)
+			resp := gock.New(accessTokenURL).
+				Post("").
+				MatchHeader("Content-Type", "application/json").
+				Reply(tt.statusCode)
 
-				// For malformed JSON test case
-				if tt.returnMalformedJSON {
-					_, err := w.Write([]byte(`{malformed json`))
-					assert.NoError(t, err)
-					return
-				}
-
-				// Write response body for other cases
-				if tt.serverResponse != nil {
-					err := json.NewEncoder(w).Encode(tt.serverResponse)
-					assert.NoError(t, err)
-				}
-			}))
-			defer server.Close()
-
-			// Need to replace the URL with the httptest server as well.
-			a := &api{
-				client:         server.Client(),
-				accessTokenURL: server.URL,
+			if tt.returnMalformedJSON {
+				resp.BodyString(`{malformed json`)
+			} else if tt.serverResponse != nil {
+				resp.JSON(tt.serverResponse)
 			}
+
+			a := newAPI()
 
 			token, err := a.TenantAccessToken(context.Background(), tt.appID, tt.appSecret)
 			if tt.expectError {

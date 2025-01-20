@@ -433,7 +433,7 @@ func (s *GoogleSheetInsertStmt) Exec(ctx context.Context) error {
 	_, err := s.store.wrapper.OverwriteRows(
 		ctx,
 		s.store.spreadsheetID,
-		common.GetA1Range(s.store.sheetName, defaultRowFullTableRange),
+		models.NewA1Range(s.store.sheetName, defaultRowFullTableRange),
 		convertedRows,
 	)
 	return err
@@ -509,7 +509,7 @@ func (s *GoogleSheetUpdateStmt) generateBatchUpdateRequests(rowIndices []int64) 
 		for _, rowIdx := range rowIndices {
 			a1Range := colIdx.Name + strconv.FormatInt(rowIdx, 10)
 			requests = append(requests, sheets.BatchUpdateRowsRequest{
-				A1Range: common.GetA1Range(s.store.sheetName, a1Range),
+				A1Range: models.NewA1Range(s.store.sheetName, a1Range),
 				Values:  [][]interface{}{{escapedValue}},
 			})
 		}
@@ -640,10 +640,10 @@ func getRowIndices(ctx context.Context, store *GoogleSheetRowStore, selectStmt s
 	return rowIndices, nil
 }
 
-func generateRowA1Ranges(sheetName string, indices []int64) []string {
-	locations := make([]string, len(indices))
+func generateRowA1Ranges(sheetName string, indices []int64) []models.A1Range {
+	locations := make([]models.A1Range, len(indices))
 	for i := range indices {
-		locations[i] = common.GetA1Range(
+		locations[i] = models.NewA1Range(
 			sheetName,
 			fmt.Sprintf(rowDeleteRangeTemplate, indices[i], indices[i]),
 		)

@@ -2,9 +2,8 @@ package store
 
 import (
 	"context"
+	"github.com/FreeLeh/GoFreeDB/internal/models"
 	"time"
-
-	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
 )
 
 func ensureSheets(wrapper sheetsWrapper, spreadsheetID string, sheetName string) error {
@@ -18,18 +17,18 @@ func findScratchpadLocation(
 	wrapper sheetsWrapper,
 	spreadsheetID string,
 	scratchpadSheetName string,
-) (sheets.A1Range, error) {
+) (models.A1Range, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
 	result, err := wrapper.OverwriteRows(
 		ctx,
 		spreadsheetID,
-		scratchpadSheetName+"!"+defaultKVTableRange,
+		models.NewA1Range(scratchpadSheetName, defaultKVTableRange),
 		[][]interface{}{{scratchpadBooked}},
 	)
 	if err != nil {
-		return sheets.A1Range{}, err
+		return models.A1Range{}, err
 	}
 	return result.UpdatedRange, nil
 }

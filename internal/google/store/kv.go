@@ -28,7 +28,7 @@ type GoogleSheetKVStore struct {
 	spreadsheetID       string
 	sheetName           string
 	scratchpadSheetName string
-	scratchpadLocation  sheets.A1Range
+	scratchpadLocation  models.A1Range
 	config              GoogleSheetKVStoreConfig
 }
 
@@ -47,15 +47,15 @@ type GoogleSheetKVStore struct {
 //     This method will also recognise and handle such cases.
 //   - There is only 1 API call behind the scene.
 func (s *GoogleSheetKVStore) Get(ctx context.Context, key string) ([]byte, error) {
-	query := fmt.Sprintf(kvGetDefaultQueryTemplate, key, common.GetA1Range(s.sheetName, defaultKVTableRange))
+	query := fmt.Sprintf(kvGetDefaultQueryTemplate, key, models.NewA1Range(s.sheetName, defaultKVTableRange))
 	if s.config.Mode == models.KVModeAppendOnly {
-		query = fmt.Sprintf(kvGetAppendQueryTemplate, key, common.GetA1Range(s.sheetName, defaultKVTableRange))
+		query = fmt.Sprintf(kvGetAppendQueryTemplate, key, models.NewA1Range(s.sheetName, defaultKVTableRange))
 	}
 
 	result, err := s.wrapper.UpdateRows(
 		ctx,
 		s.spreadsheetID,
-		s.scratchpadLocation.Original,
+		s.scratchpadLocation,
 		[][]interface{}{{query}},
 	)
 	if err != nil {
@@ -97,7 +97,7 @@ func (s *GoogleSheetKVStore) setAppendOnly(ctx context.Context, key string, enco
 	_, err := s.wrapper.InsertRows(
 		ctx,
 		s.spreadsheetID,
-		common.GetA1Range(s.sheetName, defaultKVTableRange),
+		models.NewA1Range(s.sheetName, defaultKVTableRange),
 		[][]interface{}{{key, encoded, common.CurrentTimeMs()}},
 	)
 	return err
@@ -109,7 +109,7 @@ func (s *GoogleSheetKVStore) setDefault(ctx context.Context, key string, encoded
 		_, err := s.wrapper.OverwriteRows(
 			ctx,
 			s.spreadsheetID,
-			common.GetA1Range(s.sheetName, defaultKVFirstRowRange),
+			models.NewA1Range(s.sheetName, defaultKVFirstRowRange),
 			[][]interface{}{{key, encoded, common.CurrentTimeMs()}},
 		)
 		return err
@@ -122,37 +122,41 @@ func (s *GoogleSheetKVStore) setDefault(ctx context.Context, key string, encoded
 	_, err = s.wrapper.UpdateRows(
 		ctx,
 		s.spreadsheetID,
-		a1Range.Original,
+		a1Range,
 		[][]interface{}{{key, encoded, common.CurrentTimeMs()}},
 	)
 	return err
 }
 
-func (s *GoogleSheetKVStore) findKeyA1Range(ctx context.Context, key string) (sheets.A1Range, error) {
+func (s *GoogleSheetKVStore) findKeyA1Range(ctx context.Context, key string) (models.A1Range, error) {
 	result, err := s.wrapper.UpdateRows(
 		ctx,
 		s.spreadsheetID,
-		s.scratchpadLocation.Original,
-		[][]interface{}{{fmt.Sprintf(kvFindKeyA1RangeQueryTemplate, key, common.GetA1Range(s.sheetName, defaultKVKeyColRange))}},
+		s.scratchpadLocation,
+		[][]interface{}{{fmt.Sprintf(
+			kvFindKeyA1RangeQueryTemplate,
+			key,
+			models.NewA1Range(s.sheetName, defaultKVKeyColRange),
+		)}},
 	)
 	if err != nil {
-		return sheets.A1Range{}, err
+		return models.A1Range{}, err
 	}
 	if len(result.UpdatedValues) == 0 || len(result.UpdatedValues[0]) == 0 {
-		return sheets.A1Range{}, fmt.Errorf("%w: %s", models.ErrKeyNotFound, key)
+		return models.A1Range{}, fmt.Errorf("%w: %s", models.ErrKeyNotFound, key)
 	}
 
 	offset := result.UpdatedValues[0][0].(string)
 	if offset == models.NAValue || offset == "" {
-		return sheets.A1Range{}, fmt.Errorf("%w: %s", models.ErrKeyNotFound, key)
+		return models.A1Range{}, fmt.Errorf("%w: %s", models.ErrKeyNotFound, key)
 	}
 
 	// Note that the MATCH() query only returns the relative offset from the given range.
 	// Here we need to return the full range where the key is found.
 	// Hence, we need to get the row offset first, and assume that each row has only 3 rows: A B C.
 	// Otherwise, the DELETE() function will not work properly (we need to clear the full row, not just the key cell).
-	a1Range := common.GetA1Range(s.sheetName, fmt.Sprintf("A%s:C%s", offset, offset))
-	return sheets.NewA1Range(a1Range), nil
+	a1Range := models.NewA1Range(s.sheetName, fmt.Sprintf("A%s:C%s", offset, offset))
+	return a1Range, nil
 }
 
 // Delete deletes the given key from the key-value store.
@@ -185,13 +189,13 @@ func (s *GoogleSheetKVStore) deleteDefault(ctx context.Context, key string) erro
 		return err
 	}
 
-	_, err = s.wrapper.Clear(ctx, s.spreadsheetID, []string{a1Range.Original})
+	_, err = s.wrapper.Clear(ctx, s.spreadsheetID, []models.A1Range{a1Range})
 	return err
 }
 
 // Close cleans up all held resources like the scratchpad cell booked for this specific GoogleSheetKVStore instance.
 func (s *GoogleSheetKVStore) Close(ctx context.Context) error {
-	_, err := s.wrapper.Clear(ctx, s.spreadsheetID, []string{s.scratchpadLocation.Original})
+	_, err := s.wrapper.Clear(ctx, s.spreadsheetID, []models.A1Range{s.scratchpadLocation})
 	return err
 }
 
