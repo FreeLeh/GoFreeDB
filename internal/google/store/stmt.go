@@ -399,10 +399,13 @@ func (s *GoogleSheetInsertStmt) convertRowToSlice(row interface{}) ([]interface{
 	result := make([]interface{}, len(s.store.colsMapping))
 	result[0] = rowIdxFormula
 
-	for key, value := range output {
-		if colIdx, ok := s.store.colsMapping[key]; ok {
-			escapedValue := common.EscapeValue(value)
-			if err := common.CheckIEEE754SafeInteger(escapedValue); err != nil {
+	for col, value := range output {
+		if colIdx, ok := s.store.colsMapping[col]; ok {
+			escapedValue, err := escapeValue(col, value, s.store.colsWithFormula)
+			if err != nil {
+				return nil, err
+			}
+			if err = common.CheckIEEE754SafeInteger(escapedValue); err != nil {
 				return nil, err
 			}
 			result[colIdx.Idx] = escapedValue
@@ -501,8 +504,11 @@ func (s *GoogleSheetUpdateStmt) generateBatchUpdateRequests(rowIndices []int64) 
 			return nil, fmt.Errorf("failed to update, unknown column name provided: %s", col)
 		}
 
-		escapedValue := common.EscapeValue(value)
-		if err := common.CheckIEEE754SafeInteger(escapedValue); err != nil {
+		escapedValue, err := escapeValue(col, value, s.store.colsWithFormula)
+		if err != nil {
+			return nil, err
+		}
+		if err = common.CheckIEEE754SafeInteger(escapedValue); err != nil {
 			return nil, err
 		}
 
@@ -656,4 +662,20 @@ func ridWhereClauseInterceptor(where string) string {
 		return rowWhereEmptyConditionTemplate
 	}
 	return fmt.Sprintf(rowWhereNonEmptyConditionTemplate, where)
+}
+
+func escapeValue(
+	col string,
+	value any,
+	colsWithFormula *common.Set[string],
+) (any, error) {
+	if !colsWithFormula.Contains(col) {
+		return common.EscapeValue(value), nil
+	}
+
+	_, ok := value.(string)
+	if !ok {
+		return nil, fmt.Errorf("value of column %s is not a string, but expected to contain formula", col)
+	}
+	return value, nil
 }

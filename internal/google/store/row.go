@@ -17,6 +17,10 @@ type GoogleSheetRowStoreConfig struct {
 	// The column ordering will be used for arranging the real columns in Google Sheet.
 	// Changing the column ordering in this config but not in Google Sheet will result in unexpected behaviour.
 	Columns []string
+
+	// ColumnsWithFormula defines the list of column names containing a Google Sheet formula.
+	// Note that only string fields can have a formula.
+	ColumnsWithFormula []string
 }
 
 func (c GoogleSheetRowStoreConfig) validate() error {
@@ -24,7 +28,7 @@ func (c GoogleSheetRowStoreConfig) validate() error {
 		return errors.New("columns must have at least one column")
 	}
 	if len(c.Columns) > maxColumn {
-		return errors.New("you can only have up to 1000 columns")
+		return fmt.Errorf("you can only have up to %d columns", maxColumn)
 	}
 	return nil
 }
@@ -35,6 +39,7 @@ type GoogleSheetRowStore struct {
 	spreadsheetID string
 	sheetName     string
 	colsMapping   models.ColsMapping
+	colsWithFormula *common.Set[string]
 	config        GoogleSheetRowStoreConfig
 }
 
@@ -154,14 +159,14 @@ func NewGoogleSheetRowStore(
 		panic(fmt.Errorf("error creating sheets wrapper: %w", err))
 	}
 
-	config = injectRIDCol(config)
-
+	config = injectTimestampCol(config)
 	store := &GoogleSheetRowStore{
-		wrapper:       wrapper,
-		spreadsheetID: spreadsheetID,
-		sheetName:     sheetName,
-		colsMapping:   models.GenerateColumnMapping(config.Columns),
-		config:        config,
+		wrapper:         wrapper,
+		spreadsheetID:   spreadsheetID,
+		sheetName:       sheetName,
+		colsMapping:     models.GenerateColumnMapping(config.Columns),
+		colsWithFormula: common.NewSet(config.ColumnsWithFormula),
+		config:          config,
 	}
 
 	_ = ensureSheets(store.wrapper, store.spreadsheetID, store.sheetName)

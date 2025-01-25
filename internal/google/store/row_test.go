@@ -174,6 +174,62 @@ func TestGoogleSheetRowStore_Integration_EdgeCases(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
+type formulaWriteModel struct {
+	Value string `json:"value" db:"value"`
+}
+
+type formulaReadModel struct {
+	Value int `json:"value" db:"value"`
+}
+
+func TestGoogleSheetRowStore_Formula(t *testing.T) {
+	spreadsheetID, authJSON, shouldRun := getIntegrationTestInfo()
+	if !shouldRun {
+		t.Skip("integration test should be run only in GitHub Actions")
+	}
+	sheetName := fmt.Sprintf("integration_row_%d", common.CurrentTimeMs())
+
+	googleAuth, err := auth.NewServiceFromJSON([]byte(authJSON), auth.GoogleSheetsReadWrite, auth.ServiceConfig{})
+	if err != nil {
+		t.Fatalf("error when instantiating google auth: %s", err)
+	}
+
+	db := NewGoogleSheetRowStore(
+		googleAuth,
+		spreadsheetID,
+		sheetName,
+		GoogleSheetRowStoreConfig{
+			Columns:            []string{"value"},
+			ColumnsWithFormula: []string{"value"},
+		},
+	)
+	defer func() {
+		time.Sleep(time.Second)
+		deleteSheet(t, db.wrapper, spreadsheetID, []string{db.sheetName})
+		_ = db.Close(context.Background())
+	}()
+
+	var out []formulaReadModel
+
+	time.Sleep(time.Second)
+	err = db.Insert(formulaWriteModel{Value: "=ROW()-1"}).Exec(context.Background())
+	assert.Nil(t, err)
+
+	time.Sleep(time.Second)
+	err = db.Select(&out).Exec(context.Background())
+	assert.Nil(t, err)
+	assert.ElementsMatch(t, []formulaReadModel{{Value: 1}}, out)
+
+	time.Sleep(time.Second)
+	err = db.Update(map[string]interface{}{"value": "=ROW()"}).Exec(context.Background())
+	assert.Nil(t, err)
+
+	time.Sleep(time.Second)
+	err = db.Select(&out).Exec(context.Background())
+	assert.Nil(t, err)
+	assert.ElementsMatch(t, []formulaReadModel{{Value: 2}}, out)
+}
+
 func TestInjectTimestampCol(t *testing.T) {
 	result := injectRIDCol(GoogleSheetRowStoreConfig{Columns: []string{"col1", "col2"}})
 	assert.Equal(t, GoogleSheetRowStoreConfig{Columns: []string{rowIdxCol, "col1", "col2"}}, result)

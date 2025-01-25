@@ -17,7 +17,11 @@ type person struct {
 }
 
 func TestGenerateQuery(t *testing.T) {
-	colsMapping := models.ColsMapping{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}}
+	colsMapping := models.ColsMapping{
+		rowIdxCol: {"A", 0},
+		"col1":    {"B", 1},
+		"col2":    {"C", 2},
+	}
 
 	t.Run("successful_basic", func(t *testing.T) {
 		builder := newQueryBuilder(colsMapping.NameMap(), ridWhereClauseInterceptor, []string{"col1", "col2"})
@@ -187,8 +191,12 @@ func TestGenerateQuery(t *testing.T) {
 
 func TestSelectStmt_AllColumns(t *testing.T) {
 	store := &GoogleSheetRowStore{
-		colsMapping: models.ColsMapping{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}},
-		config:      GoogleSheetRowStoreConfig{Columns: []string{"col1", "col2"}},
+		colsMapping: models.ColsMapping{
+			rowIdxCol: {"A", 0},
+			"col1":    {"B", 1},
+			"col2":    {"C", 2},
+		},
+		config: GoogleSheetRowStoreConfig{Columns: []string{"col1", "col2"}},
 	}
 	stmt := newGoogleSheetSelectStmt(store, nil, []string{})
 
@@ -201,8 +209,12 @@ func TestSelectStmt_Exec(t *testing.T) {
 	t.Run("non_slice_output", func(t *testing.T) {
 		wrapper := &sheets.MockWrapper{}
 		store := &GoogleSheetRowStore{
-			wrapper:     wrapper,
-			colsMapping: map[string]models.ColIdx{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}},
+			wrapper: wrapper,
+			colsMapping: map[string]models.ColIdx{
+				rowIdxCol: {"A", 0},
+				"col1":    {"B", 1},
+				"col2":    {"C", 2},
+			},
 		}
 		o := 0
 		stmt := newGoogleSheetSelectStmt(store, &o, []string{"col1", "col2"})
@@ -277,11 +289,17 @@ func TestSelectStmt_Exec(t *testing.T) {
 			{"name2", 11, "18-01-2000"},
 		}}}
 		store := &GoogleSheetRowStore{
-			wrapper:     wrapper,
-			colsMapping: map[string]models.ColIdx{rowIdxCol: {"A", 0}, "name": {"B", 1}, "age": {"C", 2}, "dob": {"D", 3}},
-			config: GoogleSheetRowStoreConfig{
-				Columns: []string{"name", "age", "dob"},
+			wrapper: wrapper,
+			colsMapping: map[string]models.ColIdx{
+				rowIdxCol: {"A", 0},
+				"name":    {"B", 1},
+				"age":     {"C", 2},
+				"dob":     {"D", 3},
 			},
+			colsWithFormula: common.NewSet([]string{"name"}),
+			config: GoogleSheetRowStoreConfig{
+				Columns:            []string{"name", "age", "dob"},
+				ColumnsWithFormula: []string{"name"}},
 		}
 		var out []person
 		stmt := newGoogleSheetSelectStmt(store, &out, []string{})
@@ -300,10 +318,17 @@ func TestSelectStmt_Exec(t *testing.T) {
 func TestGoogleSheetInsertStmt_convertRowToSlice(t *testing.T) {
 	wrapper := &sheets.MockWrapper{}
 	store := &GoogleSheetRowStore{
-		wrapper:     wrapper,
-		colsMapping: map[string]models.ColIdx{rowIdxCol: {"A", 0}, "name": {"B", 1}, "age": {"C", 2}, "dob": {"D", 3}},
+		wrapper: wrapper,
+		colsMapping: map[string]models.ColIdx{
+			rowIdxCol: {"A", 0},
+			"name":    {"B", 1},
+			"age":     {"C", 2},
+			"dob":     {"D", 3},
+		},
+		colsWithFormula: common.NewSet([]string{"name"}),
 		config: GoogleSheetRowStoreConfig{
-			Columns: []string{"name", "age", "dob"},
+			Columns:            []string{"name", "age", "dob"},
+			ColumnsWithFormula: []string{"name"},
 		},
 	}
 
@@ -331,15 +356,15 @@ func TestGoogleSheetInsertStmt_convertRowToSlice(t *testing.T) {
 		stmt := newGoogleSheetInsertStmt(store, nil)
 
 		result, err := stmt.convertRowToSlice(person{Name: "blah", Age: 10, DOB: "2021"})
-		assert.Equal(t, []interface{}{rowIdxFormula, "'blah", int64(10), "'2021"}, result)
+		assert.Equal(t, []interface{}{rowIdxFormula, "blah", int64(10), "'2021"}, result)
 		assert.Nil(t, err)
 
 		result, err = stmt.convertRowToSlice(&person{Name: "blah", Age: 10, DOB: "2021"})
-		assert.Equal(t, []interface{}{rowIdxFormula, "'blah", int64(10), "'2021"}, result)
+		assert.Equal(t, []interface{}{rowIdxFormula, "blah", int64(10), "'2021"}, result)
 		assert.Nil(t, err)
 
 		result, err = stmt.convertRowToSlice(person{Name: "blah", DOB: "2021"})
-		assert.Equal(t, []interface{}{rowIdxFormula, "'blah", nil, "'2021"}, result)
+		assert.Equal(t, []interface{}{rowIdxFormula, "blah", nil, "'2021"}, result)
 		assert.Nil(t, err)
 
 		type dummy struct {
@@ -347,7 +372,7 @@ func TestGoogleSheetInsertStmt_convertRowToSlice(t *testing.T) {
 		}
 
 		result, err = stmt.convertRowToSlice(dummy{Name: "blah"})
-		assert.Equal(t, []interface{}{rowIdxFormula, "'blah", nil, nil}, result)
+		assert.Equal(t, []interface{}{rowIdxFormula, "blah", nil, nil}, result)
 		assert.Nil(t, err)
 	})
 
@@ -355,7 +380,7 @@ func TestGoogleSheetInsertStmt_convertRowToSlice(t *testing.T) {
 		stmt := newGoogleSheetInsertStmt(store, nil)
 
 		result, err := stmt.convertRowToSlice(person{Name: "blah", Age: 9007199254740992, DOB: "2021"})
-		assert.Equal(t, []interface{}{rowIdxFormula, "'blah", int64(9007199254740992), "'2021"}, result)
+		assert.Equal(t, []interface{}{rowIdxFormula, "blah", int64(9007199254740992), "'2021"}, result)
 		assert.Nil(t, err)
 
 		result, err = stmt.convertRowToSlice(person{Name: "blah", Age: 9007199254740993, DOB: "2021"})
@@ -367,26 +392,40 @@ func TestGoogleSheetInsertStmt_convertRowToSlice(t *testing.T) {
 func TestGoogleSheetUpdateStmt_generateBatchUpdateRequests(t *testing.T) {
 	wrapper := &sheets.MockWrapper{}
 	store := &GoogleSheetRowStore{
-		wrapper:     wrapper,
-		sheetName:   "sheet1",
-		colsMapping: map[string]models.ColIdx{rowIdxCol: {"A", 0}, "name": {"B", 1}, "age": {"C", 2}, "dob": {"D", 3}},
+		wrapper:   wrapper,
+		sheetName: "sheet1",
+		colsMapping: map[string]models.ColIdx{
+			rowIdxCol: {"A", 0},
+			"name":    {"B", 1},
+			"age":     {"C", 2},
+			"dob":     {"D", 3},
+		},
+		colsWithFormula: common.NewSet([]string{"name"}),
 		config: GoogleSheetRowStoreConfig{
-			Columns: []string{"name", "age", "dob"},
+			Columns:            []string{"name", "age", "dob"},
+			ColumnsWithFormula: []string{"name"},
 		},
 	}
 
 	t.Run("successful", func(t *testing.T) {
-		stmt := newGoogleSheetUpdateStmt(store, map[string]interface{}{"name": "name1", "age": int64(100)})
+		stmt := newGoogleSheetUpdateStmt(
+			store,
+			map[string]interface{}{
+				"name": "name1",
+				"age":  int64(100),
+				"dob":  "hello",
+			},
+		)
 
 		requests, err := stmt.generateBatchUpdateRequests([]int64{1, 2})
 		expected := []sheets.BatchUpdateRowsRequest{
 			{
-				A1Range: models.NewA1Range(store.sheetName, "B1"),
-				Values:  [][]interface{}{{"'name1"}},
+				A1Range: models.GetA1Range(store.sheetName, "B1"),
+				Values:  [][]interface{}{{"name1"}},
 			},
 			{
-				A1Range: models.NewA1Range(store.sheetName, "B2"),
-				Values:  [][]interface{}{{"'name1"}},
+				A1Range: models.GetA1Range(store.sheetName, "B2"),
+				Values:  [][]interface{}{{"name1"}},
 			},
 			{
 				A1Range: models.NewA1Range(store.sheetName, "C1"),
@@ -396,6 +435,14 @@ func TestGoogleSheetUpdateStmt_generateBatchUpdateRequests(t *testing.T) {
 				A1Range: models.NewA1Range(store.sheetName, "C2"),
 				Values:  [][]interface{}{{int64(100)}},
 			},
+			{
+				A1Range: common.GetA1Range(store.sheetName, "D1"),
+				Values:  [][]interface{}{{"'hello"}},
+			},
+			{
+				A1Range: common.GetA1Range(store.sheetName, "D2"),
+				Values:  [][]interface{}{{"'hello"}},
+			},
 		}
 
 		assert.ElementsMatch(t, expected, requests)
@@ -403,17 +450,20 @@ func TestGoogleSheetUpdateStmt_generateBatchUpdateRequests(t *testing.T) {
 	})
 
 	t.Run("ieee754_safe_integers_successful", func(t *testing.T) {
-		stmt := newGoogleSheetUpdateStmt(store, map[string]interface{}{"name": "name1", "age": int64(9007199254740992)})
+		stmt := newGoogleSheetUpdateStmt(store, map[string]interface{}{
+			"name": "name1",
+			"age":  int64(9007199254740992),
+		})
 
 		requests, err := stmt.generateBatchUpdateRequests([]int64{1, 2})
 		expected := []sheets.BatchUpdateRowsRequest{
 			{
-				A1Range: models.NewA1Range(store.sheetName, "B1"),
-				Values:  [][]interface{}{{"'name1"}},
+				A1Range: models.GetA1Range(store.sheetName, "B1"),
+				Values:  [][]interface{}{{"name1"}},
 			},
 			{
-				A1Range: models.NewA1Range(store.sheetName, "B2"),
-				Values:  [][]interface{}{{"'name1"}},
+				A1Range: models.GetA1Range(store.sheetName, "B2"),
+				Values:  [][]interface{}{{"name1"}},
 			},
 			{
 				A1Range: models.NewA1Range(store.sheetName, "C1"),
@@ -430,10 +480,40 @@ func TestGoogleSheetUpdateStmt_generateBatchUpdateRequests(t *testing.T) {
 	})
 
 	t.Run("ieee754_safe_integers_unsuccessful", func(t *testing.T) {
-		stmt := newGoogleSheetUpdateStmt(store, map[string]interface{}{"name": "name1", "age": int64(9007199254740993)})
+		stmt := newGoogleSheetUpdateStmt(
+			store,
+			map[string]interface{}{
+				"name": "name1",
+				"age":  int64(9007199254740993),
+			},
+		)
 
 		requests, err := stmt.generateBatchUpdateRequests([]int64{1, 2})
 		assert.Nil(t, requests)
 		assert.NotNil(t, err)
+	})
+}
+
+func TestEscapeValue(t *testing.T) {
+	t.Run("not in cols with formula", func(t *testing.T) {
+		value, err := escapeValue("A", 123, models.NewSet([]string{"B"}))
+		assert.Nil(t, err)
+		assert.Equal(t, 123, value)
+
+		value, err = escapeValue("A", "123", models.NewSet([]string{"B"}))
+		assert.Nil(t, err)
+		assert.Equal(t, "'123", value)
+	})
+
+	t.Run("in cols with formula, but not string", func(t *testing.T) {
+		value, err := escapeValue("A", 123, models.NewSet([]string{"A"}))
+		assert.NotNil(t, err)
+		assert.Equal(t, nil, value)
+	})
+
+	t.Run("in cols with formula, but string", func(t *testing.T) {
+		value, err := escapeValue("A", "123", common.NewSet([]string{"A"}))
+		assert.Nil(t, err)
+		assert.Equal(t, "123", value)
 	})
 }
