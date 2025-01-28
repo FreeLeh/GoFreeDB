@@ -44,6 +44,22 @@ func TestCreateSheet(t *testing.T) {
 			Reply(http.StatusOK).
 			JSON(map[string]interface{}{
 				"code": apiStatusCodeOK,
+				"data": map[string]interface{}{
+					"responses": []map[string]interface{}{
+						{
+							"updatedRange":   "Sheet1!A1:B2",
+							"updatedRows":    2,
+							"updatedColumns": 2,
+							"updatedCells":   4,
+						},
+						{
+							"updatedRange":   "Sheet1!C1:D2",
+							"updatedRows":    2,
+							"updatedColumns": 2,
+							"updatedCells":   4,
+						},
+					},
+				},
 			})
 
 		err := wrapper.CreateSheet(context.Background(), testSpreadsheetToken, "sheet")
@@ -236,6 +252,22 @@ func TestBatchUpdateRows(t *testing.T) {
 			Reply(http.StatusOK).
 			JSON(map[string]interface{}{
 				"code": apiStatusCodeOK,
+				"data": map[string]interface{}{
+					"responses": []map[string]interface{}{
+						{
+							"updatedRange":   "Sheet1!A1:B2",
+							"updatedRows":    2,
+							"updatedColumns": 2,
+							"updatedCells":   4,
+						},
+						{
+							"updatedRange":   "Sheet1!C1:D2",
+							"updatedRows":    2,
+							"updatedColumns": 2,
+							"updatedCells":   4,
+						},
+					},
+				},
 			})
 
 		requests := []BatchUpdateRowsRequest{
@@ -249,8 +281,19 @@ func TestBatchUpdateRows(t *testing.T) {
 			},
 		}
 
-		err := wrapper.BatchUpdateRows(context.Background(), "spreadsheet123", requests)
+		results, err := wrapper.BatchUpdateRows(context.Background(), "spreadsheet123", requests)
 		assert.Nil(t, err)
+
+		assert.Equal(t, 2, len(results))
+		assert.Equal(t, models.NewA1RangeFromString("Sheet1!A1:B2"), results[0].UpdatedRange)
+		assert.Equal(t, int64(2), results[0].UpdatedRows)
+		assert.Equal(t, int64(2), results[0].UpdatedColumns)
+		assert.Equal(t, int64(4), results[0].UpdatedCells)
+
+		assert.Equal(t, models.NewA1RangeFromString("Sheet1!C1:D2"), results[1].UpdatedRange)
+		assert.Equal(t, int64(2), results[1].UpdatedRows)
+		assert.Equal(t, int64(2), results[1].UpdatedColumns)
+		assert.Equal(t, int64(4), results[1].UpdatedCells)
 	})
 
 	t.Run("http_error", func(t *testing.T) {
@@ -276,7 +319,7 @@ func TestBatchUpdateRows(t *testing.T) {
 			},
 		}
 
-		err := wrapper.BatchUpdateRows(context.Background(), "spreadsheet123", requests)
+		_, err := wrapper.BatchUpdateRows(context.Background(), "spreadsheet123", requests)
 		assert.NotNil(t, err)
 	})
 
@@ -307,7 +350,7 @@ func TestBatchUpdateRows(t *testing.T) {
 			},
 		}
 
-		err := wrapper.BatchUpdateRows(context.Background(), "spreadsheet123", requests)
+		_, err := wrapper.BatchUpdateRows(context.Background(), "spreadsheet123", requests)
 		assert.NotNil(t, err)
 	})
 }
@@ -481,4 +524,250 @@ func TestGetSheets(t *testing.T) {
 		_, err := wrapper.GetSheets(context.Background(), "spreadsheet123")
 		assert.NotNil(t, err)
 	})
+}
+
+func TestGetSingleRange(t *testing.T) {
+	t.Run("successful", func(t *testing.T) {
+		defer gock.Off()
+
+		ctrl := gomock.NewController(t)
+		mockAuth := NewMockAccessTokenGetter(ctrl)
+		wrapper := NewWrapper(mockAuth)
+		gock.InterceptClient(wrapper.httpClient)
+
+		mockAuth.EXPECT().AccessToken().
+			Return("access_token", nil).
+			Times(1)
+
+		url := fmt.Sprintf(
+			getSingleRangeURL,
+			testSpreadsheetToken,
+			"sheet1!A1:C500",
+			valueRenderOptionUnformattedValue,
+		)
+
+		gock.New(url).
+			Get("").
+			Reply(http.StatusOK).
+			JSON(map[string]interface{}{
+				"code": apiStatusCodeOK,
+				"data": map[string]interface{}{
+					"valueRange": map[string]interface{}{
+						"majorDimension": "major",
+						"range":          "sheet1!A1:C500",
+						"values": [][]interface{}{
+							{"col1", "col2"},
+							{"A", 123},
+							{"B", 456},
+						},
+					},
+				},
+			})
+
+		res, err := wrapper.getSingleRange(
+			context.Background(),
+			"spreadsheet123",
+			models.NewA1Range("sheet1", "A1:C500"),
+		)
+
+		assert.Nil(t, err)
+		assert.Equal(t, "major", res.MajorDimension)
+		assert.Equal(t, "sheet1!A1:C500", res.Range)
+
+		expected := [][]interface{}{
+			{"col1", "col2"},
+			{"A", 123.0},
+			{"B", 456.0},
+		}
+		assert.Equal(t, expected, res.Values)
+	})
+
+	t.Run("http_error", func(t *testing.T) {
+		defer gock.Off()
+
+		ctrl := gomock.NewController(t)
+		mockAuth := NewMockAccessTokenGetter(ctrl)
+		wrapper := NewWrapper(mockAuth)
+		gock.InterceptClient(wrapper.httpClient)
+
+		mockAuth.EXPECT().AccessToken().
+			Return("access_token", nil).
+			Times(1)
+
+		url := fmt.Sprintf(
+			getSingleRangeURL,
+			testSpreadsheetToken,
+			"sheet1!A1:C500",
+			valueRenderOptionUnformattedValue,
+		)
+
+		gock.New(url).
+			Get("").
+			Reply(http.StatusInternalServerError)
+
+		_, err := wrapper.GetSheets(context.Background(), "spreadsheet123")
+		assert.NotNil(t, err)
+	})
+
+	t.Run("api_error", func(t *testing.T) {
+		defer gock.Off()
+
+		ctrl := gomock.NewController(t)
+		mockAuth := NewMockAccessTokenGetter(ctrl)
+		wrapper := NewWrapper(mockAuth)
+		gock.InterceptClient(wrapper.httpClient)
+
+		mockAuth.EXPECT().AccessToken().
+			Return("access_token", nil).
+			Times(1)
+
+		url := fmt.Sprintf(
+			getSingleRangeURL,
+			testSpreadsheetToken,
+			"sheet1!A1:C500",
+			valueRenderOptionUnformattedValue,
+		)
+
+		gock.New(url).
+			Get("").
+			Reply(http.StatusOK).
+			JSON(map[string]interface{}{
+				"code": 500,
+				"msg":  "internal error",
+			})
+
+		_, err := wrapper.GetSheets(context.Background(), "spreadsheet123")
+		assert.NotNil(t, err)
+	})
+}
+
+func TestQueryRows(t *testing.T) {
+	tc := []struct {
+		name                   string
+		updateResult           []map[string]interface{}
+		updateResultStatusCode int
+		getSingleResult        [][]interface{}
+		getSingleStatusCode    int
+		expected               QueryRowsResult
+		hasErr                 bool
+	}{
+		{
+			name:                   "batch update rows error",
+			updateResultStatusCode: http.StatusInternalServerError,
+			expected:               QueryRowsResult{},
+			hasErr:                 true,
+		},
+		{
+			name:                   "empty update result",
+			updateResult:           nil,
+			updateResultStatusCode: http.StatusOK,
+			expected:               QueryRowsResult{},
+			hasErr:                 true,
+		},
+		{
+			name: "no updated rows",
+			updateResult: []map[string]interface{}{
+				{
+					"updatedRows": 0,
+				},
+			},
+			updateResultStatusCode: http.StatusOK,
+			expected:               QueryRowsResult{},
+			hasErr:                 true,
+		},
+		{
+			name: "get single range error",
+			updateResult: []map[string]interface{}{
+				{
+					"updatedRows": 1,
+				},
+			},
+			updateResultStatusCode: http.StatusOK,
+			getSingleStatusCode:    http.StatusInternalServerError,
+			expected:               QueryRowsResult{},
+			hasErr:                 true,
+		},
+		{
+			name: "all successful",
+			updateResult: []map[string]interface{}{
+				{
+					"updatedRows": 1,
+				},
+			},
+			updateResultStatusCode: http.StatusOK,
+			getSingleResult: [][]interface{}{
+				{"col1", "col2"},
+				{"A", 123.0},
+				{"B", 456.0},
+			},
+			getSingleStatusCode: http.StatusOK,
+			expected: QueryRowsResult{
+				Rows: [][]interface{}{
+					{"col1", "col2"},
+					{"A", 123.0},
+					{"B", 456.0},
+				},
+			},
+			hasErr: false,
+		},
+	}
+
+	for _, tt := range tc {
+		t.Run(tt.name, func(t *testing.T) {
+			defer gock.Off()
+
+			ctrl := gomock.NewController(t)
+			mockAuth := NewMockAccessTokenGetter(ctrl)
+			wrapper := NewWrapper(mockAuth)
+			gock.InterceptClient(wrapper.httpClient)
+
+			mockAuth.EXPECT().AccessToken().
+				Return("access_token", nil).
+				AnyTimes()
+
+			gock.New(fmt.Sprintf(batchUpdateRowsURL, testSpreadsheetToken)).
+				Post("").
+				Reply(tt.updateResultStatusCode).
+				JSON(map[string]interface{}{
+					"code": apiStatusCodeOK,
+					"data": map[string]interface{}{
+						"responses": tt.updateResult,
+					},
+				})
+
+			getSingleURL := fmt.Sprintf(
+				getSingleRangeURL,
+				testSpreadsheetToken,
+				"sheet1!A1:C500",
+				valueRenderOptionUnformattedValue,
+			)
+			gock.New(getSingleURL).
+				Get("").
+				Reply(tt.getSingleStatusCode).
+				JSON(map[string]interface{}{
+					"code": apiStatusCodeOK,
+					"data": map[string]interface{}{
+						"valueRange": map[string]interface{}{
+							"majorDimension": "major",
+							"range":          "sheet1!A1:C500",
+							"values":         tt.getSingleResult,
+						},
+					},
+				})
+
+			res, err := wrapper.QueryRows(
+				context.Background(),
+				"spreadsheet123",
+				models.NewA1Range("sheet1", "A1:C500"),
+				"query",
+			)
+
+			assert.Equal(t, tt.expected, res)
+			if tt.hasErr {
+				assert.NotNil(t, err, err)
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
 }

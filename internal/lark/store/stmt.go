@@ -5,15 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"github.com/FreeLeh/GoFreeDB/internal/common"
-	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
+	"github.com/FreeLeh/GoFreeDB/internal/lark/sheets"
 	"github.com/FreeLeh/GoFreeDB/internal/models"
 	"reflect"
 	"strconv"
 )
 
-// GoogleSheetSelectStmt encapsulates information required to query the row store.
-type GoogleSheetSelectStmt struct {
-	store        *GoogleSheetRowStore
+// LarkSheetSelectStmt encapsulates information required to query the row store.
+type LarkSheetSelectStmt struct {
+	store        *LarkSheetRowStore
 	columns      []string
 	queryBuilder *common.QueryBuilder
 	output       interface{}
@@ -32,7 +32,7 @@ type GoogleSheetSelectStmt struct {
 //
 // All conditions supported by Google Sheet "QUERY" function are supported by this library.
 // You can read the full information in https://developers.google.com/chart/interactive/docs/querylanguage#where.
-func (s *GoogleSheetSelectStmt) Where(condition string, args ...interface{}) *GoogleSheetSelectStmt {
+func (s *LarkSheetSelectStmt) Where(condition string, args ...interface{}) *LarkSheetSelectStmt {
 	s.queryBuilder.Where(condition, args...)
 	return s
 }
@@ -40,7 +40,7 @@ func (s *GoogleSheetSelectStmt) Where(condition string, args ...interface{}) *Go
 // OrderBy specifies the column ordering.
 //
 // The default value is no ordering specified.
-func (s *GoogleSheetSelectStmt) OrderBy(ordering []models.ColumnOrderBy) *GoogleSheetSelectStmt {
+func (s *LarkSheetSelectStmt) OrderBy(ordering []models.ColumnOrderBy) *LarkSheetSelectStmt {
 	s.queryBuilder.OrderBy(ordering)
 	return s
 }
@@ -48,7 +48,7 @@ func (s *GoogleSheetSelectStmt) OrderBy(ordering []models.ColumnOrderBy) *Google
 // Limit specifies the number of rows to retrieve.
 //
 // The default value is 0.
-func (s *GoogleSheetSelectStmt) Limit(limit uint64) *GoogleSheetSelectStmt {
+func (s *LarkSheetSelectStmt) Limit(limit uint64) *LarkSheetSelectStmt {
 	s.queryBuilder.Limit(limit)
 	return s
 }
@@ -56,7 +56,7 @@ func (s *GoogleSheetSelectStmt) Limit(limit uint64) *GoogleSheetSelectStmt {
 // Offset specifies the number of rows to skip before starting to include the rows.
 //
 // The default value is 0.
-func (s *GoogleSheetSelectStmt) Offset(offset uint64) *GoogleSheetSelectStmt {
+func (s *LarkSheetSelectStmt) Offset(offset uint64) *LarkSheetSelectStmt {
 	s.queryBuilder.Offset(offset)
 	return s
 }
@@ -64,7 +64,7 @@ func (s *GoogleSheetSelectStmt) Offset(offset uint64) *GoogleSheetSelectStmt {
 // Exec retrieves rows matching with the given condition.
 //
 // There is only 1 API call behind the scene.
-func (s *GoogleSheetSelectStmt) Exec(ctx context.Context) error {
+func (s *LarkSheetSelectStmt) Exec(ctx context.Context) error {
 	if err := s.ensureOutputSlice(); err != nil {
 		return err
 	}
@@ -76,10 +76,9 @@ func (s *GoogleSheetSelectStmt) Exec(ctx context.Context) error {
 
 	result, err := s.store.wrapper.QueryRows(
 		ctx,
-		s.store.spreadsheetID,
-		s.store.sheetName,
+		s.store.spreadsheetToken,
+		s.store.scratchpadLocation,
 		stmt,
-		true,
 	)
 	if err != nil {
 		return err
@@ -89,7 +88,7 @@ func (s *GoogleSheetSelectStmt) Exec(ctx context.Context) error {
 	return common.MapStructureDecode(m, s.output)
 }
 
-func (s *GoogleSheetSelectStmt) buildQueryResultMap(original sheets.QueryRowsResult) []map[string]interface{} {
+func (s *LarkSheetSelectStmt) buildQueryResultMap(original sheets.QueryRowsResult) []map[string]interface{} {
 	result := make([]map[string]interface{}, len(original.Rows))
 
 	for rowIdx, row := range original.Rows {
@@ -104,7 +103,7 @@ func (s *GoogleSheetSelectStmt) buildQueryResultMap(original sheets.QueryRowsRes
 	return result
 }
 
-func (s *GoogleSheetSelectStmt) ensureOutputSlice() error {
+func (s *LarkSheetSelectStmt) ensureOutputSlice() error {
 	// Passing an uninitialised slice will not compare to nil due to this: https://yourbasic.org/golang/gotcha-why-nil-error-not-equal-nil/
 	// Only if passing an untyped `nil` will compare to the `nil` in the line below.
 	// Observations as below:
@@ -132,12 +131,12 @@ func (s *GoogleSheetSelectStmt) ensureOutputSlice() error {
 	return nil
 }
 
-func newGoogleSheetSelectStmt(store *GoogleSheetRowStore, output interface{}, columns []string) *GoogleSheetSelectStmt {
+func newLarkSheetSelectStmt(store *LarkSheetRowStore, output interface{}, columns []string) *LarkSheetSelectStmt {
 	if len(columns) == 0 {
 		columns = store.config.Columns
 	}
 
-	return &GoogleSheetSelectStmt{
+	return &LarkSheetSelectStmt{
 		store:   store,
 		columns: columns,
 		queryBuilder: common.NewQueryBuilder(
@@ -149,13 +148,13 @@ func newGoogleSheetSelectStmt(store *GoogleSheetRowStore, output interface{}, co
 	}
 }
 
-// GoogleSheetInsertStmt encapsulates information required to insert new rows into the Google Sheet.
-type GoogleSheetInsertStmt struct {
-	store *GoogleSheetRowStore
+// LarkSheetInsertStmt encapsulates information required to insert new rows into the Google Sheet.
+type LarkSheetInsertStmt struct {
+	store *LarkSheetRowStore
 	rows  []interface{}
 }
 
-func (s *GoogleSheetInsertStmt) convertRowToSlice(row interface{}) ([]interface{}, error) {
+func (s *LarkSheetInsertStmt) convertRowToSlice(row interface{}) ([]interface{}, error) {
 	if row == nil {
 		return nil, errors.New("row type must not be nil")
 	}
@@ -196,7 +195,7 @@ func (s *GoogleSheetInsertStmt) convertRowToSlice(row interface{}) ([]interface{
 // This method calls the relevant Google Sheet APIs to actually insert the new rows.
 //
 // There is only 1 API call behind the scene.
-func (s *GoogleSheetInsertStmt) Exec(ctx context.Context) error {
+func (s *LarkSheetInsertStmt) Exec(ctx context.Context) error {
 	if len(s.rows) == 0 {
 		return nil
 	}
@@ -212,32 +211,32 @@ func (s *GoogleSheetInsertStmt) Exec(ctx context.Context) error {
 
 	_, err := s.store.wrapper.OverwriteRows(
 		ctx,
-		s.store.spreadsheetID,
+		s.store.spreadsheetToken,
 		models.NewA1Range(s.store.sheetName, defaultRowFullTableRange),
 		convertedRows,
 	)
 	return err
 }
 
-func newGoogleSheetInsertStmt(store *GoogleSheetRowStore, rows []interface{}) *GoogleSheetInsertStmt {
-	return &GoogleSheetInsertStmt{
+func newLarkSheetInsertStmt(store *LarkSheetRowStore, rows []interface{}) *LarkSheetInsertStmt {
+	return &LarkSheetInsertStmt{
 		store: store,
 		rows:  rows,
 	}
 }
 
-// GoogleSheetUpdateStmt encapsulates information required to update rows.
-type GoogleSheetUpdateStmt struct {
-	store        *GoogleSheetRowStore
+// LarkSheetUpdateStmt encapsulates information required to update rows.
+type LarkSheetUpdateStmt struct {
+	store        *LarkSheetRowStore
 	colToValue   map[string]interface{}
 	queryBuilder *common.QueryBuilder
 }
 
 // Where specifies the condition to choose which rows are affected.
 //
-// It works just like the GoogleSheetSelectStmt.Where() method.
-// Please read GoogleSheetSelectStmt.Where() for more details.
-func (s *GoogleSheetUpdateStmt) Where(condition string, args ...interface{}) *GoogleSheetUpdateStmt {
+// It works just like the LarkSheetSelectStmt.Where() method.
+// Please read LarkSheetSelectStmt.Where() for more details.
+func (s *LarkSheetUpdateStmt) Where(condition string, args ...interface{}) *LarkSheetUpdateStmt {
 	s.queryBuilder.Where(condition, args...)
 	return s
 }
@@ -245,7 +244,7 @@ func (s *GoogleSheetUpdateStmt) Where(condition string, args ...interface{}) *Go
 // Exec updates rows matching the condition with the new values for affected columns.
 //
 // There are 2 API calls behind the scene.
-func (s *GoogleSheetUpdateStmt) Exec(ctx context.Context) error {
+func (s *LarkSheetUpdateStmt) Exec(ctx context.Context) error {
 	if len(s.colToValue) == 0 {
 		return errors.New("empty colToValue, at least one column must be updated")
 	}
@@ -268,11 +267,15 @@ func (s *GoogleSheetUpdateStmt) Exec(ctx context.Context) error {
 		return err
 	}
 
-	_, err = s.store.wrapper.BatchUpdateRows(ctx, s.store.spreadsheetID, requests)
+	_, err = s.store.wrapper.BatchUpdateRows(
+		ctx,
+		s.store.spreadsheetToken,
+		requests,
+	)
 	return err
 }
 
-func (s *GoogleSheetUpdateStmt) generateBatchUpdateRequests(rowIndices []int64) ([]sheets.BatchUpdateRowsRequest, error) {
+func (s *LarkSheetUpdateStmt) generateBatchUpdateRequests(rowIndices []int64) ([]sheets.BatchUpdateRowsRequest, error) {
 	requests := make([]sheets.BatchUpdateRowsRequest, 0)
 
 	for col, value := range s.colToValue {
@@ -301,8 +304,8 @@ func (s *GoogleSheetUpdateStmt) generateBatchUpdateRequests(rowIndices []int64) 
 	return requests, nil
 }
 
-func newGoogleSheetUpdateStmt(store *GoogleSheetRowStore, colToValue map[string]interface{}) *GoogleSheetUpdateStmt {
-	return &GoogleSheetUpdateStmt{
+func newLarkSheetUpdateStmt(store *LarkSheetRowStore, colToValue map[string]interface{}) *LarkSheetUpdateStmt {
+	return &LarkSheetUpdateStmt{
 		store:      store,
 		colToValue: colToValue,
 		queryBuilder: common.NewQueryBuilder(
@@ -313,17 +316,17 @@ func newGoogleSheetUpdateStmt(store *GoogleSheetRowStore, colToValue map[string]
 	}
 }
 
-// GoogleSheetDeleteStmt encapsulates information required to delete rows.
-type GoogleSheetDeleteStmt struct {
-	store        *GoogleSheetRowStore
+// LarkSheetDeleteStmt encapsulates information required to delete rows.
+type LarkSheetDeleteStmt struct {
+	store        *LarkSheetRowStore
 	queryBuilder *common.QueryBuilder
 }
 
 // Where specifies the condition to choose which rows are affected.
 //
-// It works just like the GoogleSheetSelectStmt.Where() method.
-// Please read GoogleSheetSelectStmt.Where() for more details.
-func (s *GoogleSheetDeleteStmt) Where(condition string, args ...interface{}) *GoogleSheetDeleteStmt {
+// It works just like the LarkSheetSelectStmt.Where() method.
+// Please read LarkSheetSelectStmt.Where() for more details.
+func (s *LarkSheetDeleteStmt) Where(condition string, args ...interface{}) *LarkSheetDeleteStmt {
 	s.queryBuilder.Where(condition, args...)
 	return s
 }
@@ -331,7 +334,7 @@ func (s *GoogleSheetDeleteStmt) Where(condition string, args ...interface{}) *Go
 // Exec deletes rows matching the condition.
 //
 // There are 2 API calls behind the scene.
-func (s *GoogleSheetDeleteStmt) Exec(ctx context.Context) error {
+func (s *LarkSheetDeleteStmt) Exec(ctx context.Context) error {
 	selectStmt, err := s.queryBuilder.Generate()
 	if err != nil {
 		return err
@@ -345,12 +348,15 @@ func (s *GoogleSheetDeleteStmt) Exec(ctx context.Context) error {
 		return nil
 	}
 
-	_, err = s.store.wrapper.Clear(ctx, s.store.spreadsheetID, generateRowA1Ranges(s.store.sheetName, indices))
-	return err
+	return s.store.wrapper.Clear(
+		ctx,
+		s.store.spreadsheetToken,
+		generateRowA1Ranges(s.store.sheetName, indices),
+	)
 }
 
-func newGoogleSheetDeleteStmt(store *GoogleSheetRowStore) *GoogleSheetDeleteStmt {
-	return &GoogleSheetDeleteStmt{
+func newLarkSheetDeleteStmt(store *LarkSheetRowStore) *LarkSheetDeleteStmt {
+	return &LarkSheetDeleteStmt{
 		store: store,
 		queryBuilder: common.NewQueryBuilder(
 			store.colsMapping.NameMap(),
@@ -362,14 +368,14 @@ func newGoogleSheetDeleteStmt(store *GoogleSheetRowStore) *GoogleSheetDeleteStmt
 
 // GoogleSheetCountStmt encapsulates information required to count the number of rows matching some conditions.
 type GoogleSheetCountStmt struct {
-	store        *GoogleSheetRowStore
+	store        *LarkSheetRowStore
 	queryBuilder *common.QueryBuilder
 }
 
 // Where specifies the condition to choose which rows are affected.
 //
-// It works just like the GoogleSheetSelectStmt.Where() method.
-// Please read GoogleSheetSelectStmt.Where() for more details.
+// It works just like the LarkSheetSelectStmt.Where() method.
+// Please read LarkSheetSelectStmt.Where() for more details.
 func (s *GoogleSheetCountStmt) Where(condition string, args ...interface{}) *GoogleSheetCountStmt {
 	s.queryBuilder.Where(condition, args...)
 	return s
@@ -384,7 +390,12 @@ func (s *GoogleSheetCountStmt) Exec(ctx context.Context) (uint64, error) {
 		return 0, err
 	}
 
-	result, err := s.store.wrapper.QueryRows(ctx, s.store.spreadsheetID, s.store.sheetName, selectStmt, true)
+	result, err := s.store.wrapper.QueryRows(
+		ctx,
+		s.store.spreadsheetToken,
+		s.store.scratchpadLocation,
+		selectStmt,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -397,7 +408,7 @@ func (s *GoogleSheetCountStmt) Exec(ctx context.Context) (uint64, error) {
 	return uint64(count), nil
 }
 
-func newGoogleSheetCountStmt(store *GoogleSheetRowStore) *GoogleSheetCountStmt {
+func newGoogleSheetCountStmt(store *LarkSheetRowStore) *GoogleSheetCountStmt {
 	countClause := fmt.Sprintf("COUNT(%s)", rowIdxCol)
 	return &GoogleSheetCountStmt{
 		store: store,
@@ -409,24 +420,35 @@ func newGoogleSheetCountStmt(store *GoogleSheetRowStore) *GoogleSheetCountStmt {
 	}
 }
 
-func getRowIndices(ctx context.Context, store *GoogleSheetRowStore, selectStmt string) ([]int64, error) {
-	result, err := store.wrapper.QueryRows(ctx, store.spreadsheetID, store.sheetName, selectStmt, true)
+func getRowIndices(ctx context.Context, store *LarkSheetRowStore, selectStmt string) ([]int64, error) {
+	result, err := store.wrapper.QueryRows(
+		ctx,
+		store.spreadsheetToken,
+		store.scratchpadLocation,
+		selectStmt,
+	)
 	if err != nil {
 		return nil, err
 	}
 	if len(result.Rows) == 0 {
-		return nil, nil
+		return nil, fmt.Errorf("error retrieving row indices, empty rows")
 	}
 
 	rowIndices := make([]int64, 0)
 	for _, row := range result.Rows {
 		if len(row) != 1 {
-			return nil, fmt.Errorf("error retrieving row indices: %+v", result)
+			return nil, fmt.Errorf(
+				"error retrieving row indices: %s",
+				common.JSONEncodeNoError(result),
+			)
 		}
 
 		idx, ok := row[0].(float64)
 		if !ok {
-			return nil, fmt.Errorf("error converting row indices, value: %+v", row[0])
+			return nil, fmt.Errorf(
+				"error converting row indices, value: %s",
+				common.JSONEncodeNoError(row),
+			)
 		}
 
 		rowIndices = append(rowIndices, int64(idx))
@@ -444,11 +466,4 @@ func generateRowA1Ranges(sheetName string, indices []int64) []models.A1Range {
 		)
 	}
 	return locations
-}
-
-func ridWhereClauseInterceptor(where string) string {
-	if where == "" {
-		return rowWhereEmptyConditionTemplate
-	}
-	return fmt.Sprintf(rowWhereNonEmptyConditionTemplate, where)
 }

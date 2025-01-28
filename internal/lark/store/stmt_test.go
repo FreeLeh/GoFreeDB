@@ -4,11 +4,10 @@ import (
 	"context"
 	"errors"
 	"github.com/FreeLeh/GoFreeDB/internal/common"
+	"github.com/FreeLeh/GoFreeDB/internal/lark/sheets"
 	"github.com/FreeLeh/GoFreeDB/internal/models"
-	"testing"
-
-	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 type person struct {
@@ -18,15 +17,15 @@ type person struct {
 }
 
 func TestSelectStmt_AllColumns(t *testing.T) {
-	store := &GoogleSheetRowStore{
+	store := &LarkSheetRowStore{
 		colsMapping: models.ColsMapping{
 			rowIdxCol: {"A", 0},
 			"col1":    {"B", 1},
 			"col2":    {"C", 2},
 		},
-		config: GoogleSheetRowStoreConfig{Columns: []string{"col1", "col2"}},
+		config: LarkSheetRowStoreConfig{Columns: []string{"col1", "col2"}},
 	}
-	stmt := newGoogleSheetSelectStmt(store, nil, []string{})
+	stmt := newLarkSheetSelectStmt(store, nil, []string{})
 
 	result, err := stmt.queryBuilder.Generate()
 	assert.Nil(t, err)
@@ -36,7 +35,7 @@ func TestSelectStmt_AllColumns(t *testing.T) {
 func TestSelectStmt_Exec(t *testing.T) {
 	t.Run("non_slice_output", func(t *testing.T) {
 		wrapper := &MockWrapper{}
-		store := &GoogleSheetRowStore{
+		store := &LarkSheetRowStore{
 			wrapper: wrapper,
 			colsMapping: map[string]models.ColIdx{
 				rowIdxCol: {"A", 0},
@@ -45,42 +44,42 @@ func TestSelectStmt_Exec(t *testing.T) {
 			},
 		}
 		o := 0
-		stmt := newGoogleSheetSelectStmt(store, &o, []string{"col1", "col2"})
+		stmt := newLarkSheetSelectStmt(store, &o, []string{"col1", "col2"})
 
 		assert.NotNil(t, stmt.Exec(context.Background()))
 	})
 
 	t.Run("non_pointer_to_slice_output", func(t *testing.T) {
 		wrapper := &MockWrapper{}
-		store := &GoogleSheetRowStore{
+		store := &LarkSheetRowStore{
 			wrapper:     wrapper,
 			colsMapping: map[string]models.ColIdx{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}},
 		}
 		var o []int
-		stmt := newGoogleSheetSelectStmt(store, o, []string{"col1", "col2"})
+		stmt := newLarkSheetSelectStmt(store, o, []string{"col1", "col2"})
 
 		assert.NotNil(t, stmt.Exec(context.Background()))
 	})
 
 	t.Run("nil_output", func(t *testing.T) {
 		wrapper := &MockWrapper{}
-		store := &GoogleSheetRowStore{
+		store := &LarkSheetRowStore{
 			wrapper:     wrapper,
 			colsMapping: map[string]models.ColIdx{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}},
 		}
-		stmt := newGoogleSheetSelectStmt(store, nil, []string{"col1", "col2"})
+		stmt := newLarkSheetSelectStmt(store, nil, []string{"col1", "col2"})
 
 		assert.NotNil(t, stmt.Exec(context.Background()))
 	})
 
 	t.Run("has_query_error", func(t *testing.T) {
 		wrapper := &MockWrapper{QueryRowsError: errors.New("some error")}
-		store := &GoogleSheetRowStore{
+		store := &LarkSheetRowStore{
 			wrapper:     wrapper,
 			colsMapping: map[string]models.ColIdx{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}},
 		}
 		var out []int
-		stmt := newGoogleSheetSelectStmt(store, &out, []string{"col1", "col2"})
+		stmt := newLarkSheetSelectStmt(store, &out, []string{"col1", "col2"})
 
 		err := stmt.Exec(context.Background())
 		assert.NotNil(t, err)
@@ -91,15 +90,15 @@ func TestSelectStmt_Exec(t *testing.T) {
 			{10, "17-01-2001"},
 			{11, "18-01-2000"},
 		}}}
-		store := &GoogleSheetRowStore{
+		store := &LarkSheetRowStore{
 			wrapper:     wrapper,
 			colsMapping: map[string]models.ColIdx{rowIdxCol: {"A", 0}, "name": {"B", 1}, "age": {"C", 2}, "dob": {"D", 3}},
-			config: GoogleSheetRowStoreConfig{
+			config: LarkSheetRowStoreConfig{
 				Columns: []string{"name", "age", "dob"},
 			},
 		}
 		var out []person
-		stmt := newGoogleSheetSelectStmt(store, &out, []string{"age", "dob"})
+		stmt := newLarkSheetSelectStmt(store, &out, []string{"age", "dob"})
 
 		expected := []person{
 			{Age: 10, DOB: "17-01-2001"},
@@ -116,7 +115,7 @@ func TestSelectStmt_Exec(t *testing.T) {
 			{"name1", 10, "17-01-2001"},
 			{"name2", 11, "18-01-2000"},
 		}}}
-		store := &GoogleSheetRowStore{
+		store := &LarkSheetRowStore{
 			wrapper: wrapper,
 			colsMapping: map[string]models.ColIdx{
 				rowIdxCol: {"A", 0},
@@ -125,12 +124,12 @@ func TestSelectStmt_Exec(t *testing.T) {
 				"dob":     {"D", 3},
 			},
 			colsWithFormula: common.NewSet([]string{"name"}),
-			config: GoogleSheetRowStoreConfig{
+			config: LarkSheetRowStoreConfig{
 				Columns:            []string{"name", "age", "dob"},
 				ColumnsWithFormula: []string{"name"}},
 		}
 		var out []person
-		stmt := newGoogleSheetSelectStmt(store, &out, []string{})
+		stmt := newLarkSheetSelectStmt(store, &out, []string{})
 
 		expected := []person{
 			{Name: "name1", Age: 10, DOB: "17-01-2001"},
@@ -143,9 +142,9 @@ func TestSelectStmt_Exec(t *testing.T) {
 	})
 }
 
-func TestGoogleSheetInsertStmt_convertRowToSlice(t *testing.T) {
+func TestLarkSheetInsertStmt_convertRowToSlice(t *testing.T) {
 	wrapper := &MockWrapper{}
-	store := &GoogleSheetRowStore{
+	store := &LarkSheetRowStore{
 		wrapper: wrapper,
 		colsMapping: map[string]models.ColIdx{
 			rowIdxCol: {"A", 0},
@@ -154,14 +153,14 @@ func TestGoogleSheetInsertStmt_convertRowToSlice(t *testing.T) {
 			"dob":     {"D", 3},
 		},
 		colsWithFormula: common.NewSet([]string{"name"}),
-		config: GoogleSheetRowStoreConfig{
+		config: LarkSheetRowStoreConfig{
 			Columns:            []string{"name", "age", "dob"},
 			ColumnsWithFormula: []string{"name"},
 		},
 	}
 
 	t.Run("non_struct", func(t *testing.T) {
-		stmt := newGoogleSheetInsertStmt(store, nil)
+		stmt := newLarkSheetInsertStmt(store, nil)
 
 		result, err := stmt.convertRowToSlice(nil)
 		assert.Nil(t, result)
@@ -181,7 +180,7 @@ func TestGoogleSheetInsertStmt_convertRowToSlice(t *testing.T) {
 	})
 
 	t.Run("struct", func(t *testing.T) {
-		stmt := newGoogleSheetInsertStmt(store, nil)
+		stmt := newLarkSheetInsertStmt(store, nil)
 
 		result, err := stmt.convertRowToSlice(person{Name: "blah", Age: 10, DOB: "2021"})
 		assert.Equal(t, []interface{}{rowIdxFormula, "blah", int64(10), "'2021"}, result)
@@ -205,7 +204,7 @@ func TestGoogleSheetInsertStmt_convertRowToSlice(t *testing.T) {
 	})
 
 	t.Run("ieee754_safe_integers", func(t *testing.T) {
-		stmt := newGoogleSheetInsertStmt(store, nil)
+		stmt := newLarkSheetInsertStmt(store, nil)
 
 		result, err := stmt.convertRowToSlice(person{Name: "blah", Age: 9007199254740992, DOB: "2021"})
 		assert.Equal(t, []interface{}{rowIdxFormula, "blah", int64(9007199254740992), "'2021"}, result)
@@ -219,7 +218,7 @@ func TestGoogleSheetInsertStmt_convertRowToSlice(t *testing.T) {
 
 func TestGoogleSheetUpdateStmt_generateBatchUpdateRequests(t *testing.T) {
 	wrapper := &MockWrapper{}
-	store := &GoogleSheetRowStore{
+	store := &LarkSheetRowStore{
 		wrapper:   wrapper,
 		sheetName: "sheet1",
 		colsMapping: map[string]models.ColIdx{
@@ -229,14 +228,14 @@ func TestGoogleSheetUpdateStmt_generateBatchUpdateRequests(t *testing.T) {
 			"dob":     {"D", 3},
 		},
 		colsWithFormula: common.NewSet([]string{"name"}),
-		config: GoogleSheetRowStoreConfig{
+		config: LarkSheetRowStoreConfig{
 			Columns:            []string{"name", "age", "dob"},
 			ColumnsWithFormula: []string{"name"},
 		},
 	}
 
 	t.Run("successful", func(t *testing.T) {
-		stmt := newGoogleSheetUpdateStmt(
+		stmt := newLarkSheetUpdateStmt(
 			store,
 			map[string]interface{}{
 				"name": "name1",
@@ -278,7 +277,7 @@ func TestGoogleSheetUpdateStmt_generateBatchUpdateRequests(t *testing.T) {
 	})
 
 	t.Run("ieee754_safe_integers_successful", func(t *testing.T) {
-		stmt := newGoogleSheetUpdateStmt(store, map[string]interface{}{
+		stmt := newLarkSheetUpdateStmt(store, map[string]interface{}{
 			"name": "name1",
 			"age":  int64(9007199254740992),
 		})
@@ -308,7 +307,7 @@ func TestGoogleSheetUpdateStmt_generateBatchUpdateRequests(t *testing.T) {
 	})
 
 	t.Run("ieee754_safe_integers_unsuccessful", func(t *testing.T) {
-		stmt := newGoogleSheetUpdateStmt(
+		stmt := newLarkSheetUpdateStmt(
 			store,
 			map[string]interface{}{
 				"name": "name1",

@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/FreeLeh/GoFreeDB/internal/models"
+	"github.com/FreeLeh/GoFreeDB/internal/common"
 	"time"
 
 	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
+	"github.com/FreeLeh/GoFreeDB/internal/models"
 )
 
 // GoogleSheetRowStoreConfig defines a list of configurations that can be used to customise how the GoogleSheetRowStore works.
@@ -35,12 +36,12 @@ func (c GoogleSheetRowStoreConfig) validate() error {
 
 // GoogleSheetRowStore encapsulates row store functionality on top of a Google Sheet.
 type GoogleSheetRowStore struct {
-	wrapper       sheetsWrapper
-	spreadsheetID string
-	sheetName     string
-	colsMapping   models.ColsMapping
+	wrapper         sheetsWrapper
+	spreadsheetID   string
+	sheetName       string
+	colsMapping     models.ColsMapping
 	colsWithFormula *common.Set[string]
-	config        GoogleSheetRowStoreConfig
+	config          GoogleSheetRowStoreConfig
 }
 
 // Select specifies which columns to return from the Google Sheet when querying and the output variable
@@ -159,7 +160,7 @@ func NewGoogleSheetRowStore(
 		panic(fmt.Errorf("error creating sheets wrapper: %w", err))
 	}
 
-	config = injectTimestampCol(config)
+	config = injectRIDCol(config)
 	store := &GoogleSheetRowStore{
 		wrapper:         wrapper,
 		spreadsheetID:   spreadsheetID,

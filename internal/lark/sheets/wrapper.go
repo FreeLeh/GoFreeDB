@@ -122,6 +122,80 @@ func (w *Wrapper) DeleteSheets(ctx context.Context, spreadsheetToken string, she
 	return nil
 }
 
+func (w *Wrapper) getSingleRange(
+	ctx context.Context,
+	spreadsheetToken string,
+	a1Range models.A1Range,
+) (getSingleRangeResult, error) {
+	url := fmt.Sprintf(getSingleRangeURL, spreadsheetToken, a1Range.Original, valueRenderOptionUnformattedValue)
+
+	var resp baseHTTPResp[getSingleRangeHTTPResp]
+	if err := w.callAPI(
+		ctx,
+		http.MethodGet,
+		"lark_get_single_range",
+		url,
+		nil,
+		&resp,
+	); err != nil {
+		return getSingleRangeResult{}, err
+	}
+
+	if resp.Code != apiStatusCodeOK {
+		return getSingleRangeResult{}, fmt.Errorf(
+			"failed calling getSingleRange, non-zero resp code, resp: %s",
+			common.JSONEncodeNoError(resp),
+		)
+	}
+
+	result := getSingleRangeResult{
+		MajorDimension: resp.Data.ValueRange.MajorDimension,
+		Range:          resp.Data.ValueRange.Range,
+		Values:         resp.Data.ValueRange.Values,
+	}
+	return result, nil
+}
+
+func (w *Wrapper) QueryRows(
+	ctx context.Context,
+	spreadsheetToken string,
+	a1Range models.A1Range,
+	query string,
+) (QueryRowsResult, error) {
+	updateResult, err := w.BatchUpdateRows(
+		ctx,
+		spreadsheetToken,
+		[]BatchUpdateRowsRequest{
+			{
+				A1Range: a1Range,
+				Values:  [][]interface{}{{query}},
+			},
+		},
+	)
+	if err != nil {
+		return QueryRowsResult{}, err
+	}
+	if len(updateResult) == 0 {
+		return QueryRowsResult{}, fmt.Errorf("error query row, empty batch update results")
+	}
+	if updateResult[0].UpdatedRows == 0 {
+		return QueryRowsResult{}, fmt.Errorf(
+			"error query row, no updated rows, unexpected, updateResult: %s",
+			common.JSONEncodeNoError(updateResult),
+		)
+	}
+
+	getSingleResult, err := w.getSingleRange(ctx, spreadsheetToken, a1Range)
+	if err != nil {
+		return QueryRowsResult{}, err
+	}
+
+	result := QueryRowsResult{
+		Rows: getSingleResult.Values,
+	}
+	return result, nil
+}
+
 func (w *Wrapper) OverwriteRows(
 	ctx context.Context,
 	spreadsheetToken string,
@@ -177,7 +251,7 @@ func (w *Wrapper) BatchUpdateRows(
 	ctx context.Context,
 	spreadsheetToken string,
 	requests []BatchUpdateRowsRequest,
-) error {
+) ([]BatchUpdateRowsResult, error) {
 	return w.batchUpdateRows(ctx, "lark_batch_update_rows", spreadsheetToken, requests)
 }
 
@@ -203,7 +277,9 @@ func (w *Wrapper) Clear(
 			Values:  values,
 		})
 	}
-	return w.batchUpdateRows(ctx, "lark_clear", spreadsheetToken, requests)
+
+	_, err := w.batchUpdateRows(ctx, "lark_clear", spreadsheetToken, requests)
+	return err
 }
 
 func (w *Wrapper) batchUpdateRows(
@@ -211,7 +287,7 @@ func (w *Wrapper) batchUpdateRows(
 	name string,
 	spreadsheetToken string,
 	requests []BatchUpdateRowsRequest,
-) error {
+) ([]BatchUpdateRowsResult, error) {
 	url := fmt.Sprintf(batchUpdateRowsURL, spreadsheetToken)
 
 	req := make([]map[string]interface{}, 0, len(requests))
@@ -232,7 +308,7 @@ func (w *Wrapper) batchUpdateRows(
 		})
 	}
 
-	var resp baseHTTPResp[struct{}]
+	var resp baseHTTPResp[batchUpdateRowsHTTPResp]
 	if err := w.callAPI(
 		ctx,
 		http.MethodPost,
@@ -241,18 +317,29 @@ func (w *Wrapper) batchUpdateRows(
 		req,
 		&resp,
 	); err != nil {
-		return err
+		return nil, err
 	}
 
 	if resp.Code != apiStatusCodeOK {
-		return fmt.Errorf(
+		return nil, fmt.Errorf(
 			"failed calling batchUpdateRows (%s), non-zero resp code, req: %s, resp: %s",
 			name,
 			common.JSONEncodeNoError(req),
 			common.JSONEncodeNoError(resp),
 		)
 	}
-	return nil
+
+	result := make([]BatchUpdateRowsResult, 0, len(resp.Data.Responses))
+	for _, r := range resp.Data.Responses {
+		result = append(result, BatchUpdateRowsResult{
+			UpdatedRange:   models.NewA1RangeFromString(r.UpdatedRange),
+			UpdatedRows:    r.UpdatedRows,
+			UpdatedColumns: r.UpdatedColumns,
+			UpdatedCells:   r.UpdatedCells,
+		})
+	}
+
+	return result, nil
 }
 
 func (w *Wrapper) callAPI(
