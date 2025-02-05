@@ -63,10 +63,13 @@ func (q *QueryBuilder) Generate() (string, error) {
 	if err := q.writeOrderBy(stmt); err != nil {
 		return "", err
 	}
-	if err := q.writeOffset(stmt); err != nil {
+
+	// Apparently both Google Sheets and Lark Sheets must put the LIMIT first then OFFSET.
+	// Else, this will return an error.
+	if err := q.writeLimit(stmt); err != nil {
 		return "", err
 	}
-	if err := q.writeLimit(stmt); err != nil {
+	if err := q.writeOffset(stmt); err != nil {
 		return "", err
 	}
 
@@ -175,9 +178,9 @@ func (q *QueryBuilder) convertString(arg interface{}) (string, error) {
 		if selectStmtStringKeyword.MatchString(cleaned) {
 			return converted, nil
 		}
-		return strconv.Quote(converted), nil
+		return SingleQuote(converted), nil
 	case []byte:
-		return strconv.Quote(string(converted)), nil
+		return SingleQuote(string(converted)), nil
 	default:
 		return "", errors.New("unsupported argument type")
 	}
@@ -217,6 +220,10 @@ func (q *QueryBuilder) writeLimit(stmt *strings.Builder) error {
 	stmt.WriteString(" limit ")
 	stmt.WriteString(strconv.FormatInt(int64(q.limit), 10))
 	return nil
+}
+
+func (q *QueryBuilder) NumCols() int {
+	return len(q.columns)
 }
 
 func NewQueryBuilder(

@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	refreshAccessTokenTimeout  = time.Second * 3
+	refreshAccessTokenTimeout  = time.Second * 10
 	refreshAccessTokenInterval = time.Second * 30
 )
 

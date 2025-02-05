@@ -41,7 +41,7 @@ func TestGenerateQuery(t *testing.T) {
 
 		result, err := builder.Generate()
 		assert.Nil(t, err)
-		assert.Equal(t, "select B, C where A is not null AND (B > 100 AND C <= true ) OR (B != \"value\" AND C == 3.14 )", result)
+		assert.Equal(t, "select B, C where A is not null AND (B > 100 AND C <= true ) OR (B != 'value' AND C == 3.14 )", result)
 	})
 
 	t.Run("unsuccessful_with_where_wrong_arg_count", func(t *testing.T) {
@@ -68,7 +68,7 @@ func TestGenerateQuery(t *testing.T) {
 
 		result, err := builder.Generate()
 		assert.Nil(t, err)
-		assert.Equal(t, "select B, C where A is not null offset 100 limit 10", result)
+		assert.Equal(t, "select B, C where A is not null limit 10 offset 100", result)
 	})
 
 	t.Run("successful_with_order_by", func(t *testing.T) {
@@ -149,7 +149,7 @@ func TestGenerateQuery(t *testing.T) {
 			},
 			{
 				input:  "something",
-				output: "\"something\"",
+				output: "'something'",
 				err:    nil,
 			},
 			{
@@ -174,7 +174,7 @@ func TestGenerateQuery(t *testing.T) {
 			},
 			{
 				input:  []byte("something"),
-				output: "\"something\"",
+				output: "'something'",
 				err:    nil,
 			},
 		}

@@ -1,8 +1,7 @@
-package store
+package google
 
 import (
 	"context"
-	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
 	"github.com/FreeLeh/GoFreeDB/internal/models"
 )
 
@@ -12,19 +11,19 @@ type MockWrapper struct {
 
 	CreateSheetError error
 
-	InsertRowsResult sheets.InsertRowsResult
+	InsertRowsResult InsertRowsResult
 	InsertRowsError  error
 
-	OverwriteRowsResult sheets.InsertRowsResult
+	OverwriteRowsResult InsertRowsResult
 	OverwriteRowsError  error
 
-	UpdateRowsResult sheets.UpdateRowsResult
+	UpdateRowsResult UpdateRowsResult
 	UpdateRowsError  error
 
-	BatchUpdateRowsResult sheets.BatchUpdateRowsResult
+	BatchUpdateRowsResult BatchUpdateRowsResult
 	BatchUpdateRowsError  error
 
-	QueryRowsResult sheets.QueryRowsResult
+	QueryRowsResult QueryRowsResult
 	QueryRowsError  error
 
 	ClearResult []string
@@ -66,7 +65,7 @@ func (w *MockWrapper) InsertRows(
 	spreadsheetID string,
 	a1Range models.A1Range,
 	values [][]interface{},
-) (sheets.InsertRowsResult, error) {
+) (InsertRowsResult, error) {
 	return w.InsertRowsResult, w.InsertRowsError
 }
 
@@ -75,7 +74,7 @@ func (w *MockWrapper) OverwriteRows(
 	spreadsheetID string,
 	a1Range models.A1Range,
 	values [][]interface{},
-) (sheets.InsertRowsResult, error) {
+) (InsertRowsResult, error) {
 	return w.OverwriteRowsResult, w.OverwriteRowsError
 }
 
@@ -84,15 +83,15 @@ func (w *MockWrapper) UpdateRows(
 	spreadsheetID string,
 	a1Range models.A1Range,
 	values [][]interface{},
-) (sheets.UpdateRowsResult, error) {
+) (UpdateRowsResult, error) {
 	return w.UpdateRowsResult, w.UpdateRowsError
 }
 
 func (w *MockWrapper) BatchUpdateRows(
 	ctx context.Context,
 	spreadsheetID string,
-	requests []sheets.BatchUpdateRowsRequest,
-) (sheets.BatchUpdateRowsResult, error) {
+	requests []BatchUpdateRowsRequest,
+) (BatchUpdateRowsResult, error) {
 	return w.BatchUpdateRowsResult, w.BatchUpdateRowsError
 }
 
@@ -102,7 +101,7 @@ func (w *MockWrapper) QueryRows(
 	sheetName string,
 	query string,
 	skipHeader bool,
-) (sheets.QueryRowsResult, error) {
+) (QueryRowsResult, error) {
 	return w.QueryRowsResult, w.QueryRowsError
 }
 

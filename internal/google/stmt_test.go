@@ -1,4 +1,4 @@
-package store
+package google
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	"github.com/FreeLeh/GoFreeDB/internal/models"
 	"testing"
 
-	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,7 +17,7 @@ type person struct {
 }
 
 func TestSelectStmt_AllColumns(t *testing.T) {
-	store := &GoogleSheetRowStore{
+	store := &SheetRowStore{
 		colsMapping: models.ColsMapping{
 			rowIdxCol: {"A", 0},
 			"col1":    {"B", 1},
@@ -26,7 +25,7 @@ func TestSelectStmt_AllColumns(t *testing.T) {
 		},
 		config: GoogleSheetRowStoreConfig{Columns: []string{"col1", "col2"}},
 	}
-	stmt := newGoogleSheetSelectStmt(store, nil, []string{})
+	stmt := newSheetSelectStmt(store, nil, []string{})
 
 	result, err := stmt.queryBuilder.Generate()
 	assert.Nil(t, err)
@@ -36,7 +35,7 @@ func TestSelectStmt_AllColumns(t *testing.T) {
 func TestSelectStmt_Exec(t *testing.T) {
 	t.Run("non_slice_output", func(t *testing.T) {
 		wrapper := &MockWrapper{}
-		store := &GoogleSheetRowStore{
+		store := &SheetRowStore{
 			wrapper: wrapper,
 			colsMapping: map[string]models.ColIdx{
 				rowIdxCol: {"A", 0},
@@ -45,53 +44,53 @@ func TestSelectStmt_Exec(t *testing.T) {
 			},
 		}
 		o := 0
-		stmt := newGoogleSheetSelectStmt(store, &o, []string{"col1", "col2"})
+		stmt := newSheetSelectStmt(store, &o, []string{"col1", "col2"})
 
 		assert.NotNil(t, stmt.Exec(context.Background()))
 	})
 
 	t.Run("non_pointer_to_slice_output", func(t *testing.T) {
 		wrapper := &MockWrapper{}
-		store := &GoogleSheetRowStore{
+		store := &SheetRowStore{
 			wrapper:     wrapper,
 			colsMapping: map[string]models.ColIdx{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}},
 		}
 		var o []int
-		stmt := newGoogleSheetSelectStmt(store, o, []string{"col1", "col2"})
+		stmt := newSheetSelectStmt(store, o, []string{"col1", "col2"})
 
 		assert.NotNil(t, stmt.Exec(context.Background()))
 	})
 
 	t.Run("nil_output", func(t *testing.T) {
 		wrapper := &MockWrapper{}
-		store := &GoogleSheetRowStore{
+		store := &SheetRowStore{
 			wrapper:     wrapper,
 			colsMapping: map[string]models.ColIdx{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}},
 		}
-		stmt := newGoogleSheetSelectStmt(store, nil, []string{"col1", "col2"})
+		stmt := newSheetSelectStmt(store, nil, []string{"col1", "col2"})
 
 		assert.NotNil(t, stmt.Exec(context.Background()))
 	})
 
 	t.Run("has_query_error", func(t *testing.T) {
 		wrapper := &MockWrapper{QueryRowsError: errors.New("some error")}
-		store := &GoogleSheetRowStore{
+		store := &SheetRowStore{
 			wrapper:     wrapper,
 			colsMapping: map[string]models.ColIdx{rowIdxCol: {"A", 0}, "col1": {"B", 1}, "col2": {"C", 2}},
 		}
 		var out []int
-		stmt := newGoogleSheetSelectStmt(store, &out, []string{"col1", "col2"})
+		stmt := newSheetSelectStmt(store, &out, []string{"col1", "col2"})
 
 		err := stmt.Exec(context.Background())
 		assert.NotNil(t, err)
 	})
 
 	t.Run("successful", func(t *testing.T) {
-		wrapper := &MockWrapper{QueryRowsResult: sheets.QueryRowsResult{Rows: [][]interface{}{
+		wrapper := &MockWrapper{QueryRowsResult: QueryRowsResult{Rows: [][]interface{}{
 			{10, "17-01-2001"},
 			{11, "18-01-2000"},
 		}}}
-		store := &GoogleSheetRowStore{
+		store := &SheetRowStore{
 			wrapper:     wrapper,
 			colsMapping: map[string]models.ColIdx{rowIdxCol: {"A", 0}, "name": {"B", 1}, "age": {"C", 2}, "dob": {"D", 3}},
 			config: GoogleSheetRowStoreConfig{
@@ -99,7 +98,7 @@ func TestSelectStmt_Exec(t *testing.T) {
 			},
 		}
 		var out []person
-		stmt := newGoogleSheetSelectStmt(store, &out, []string{"age", "dob"})
+		stmt := newSheetSelectStmt(store, &out, []string{"age", "dob"})
 
 		expected := []person{
 			{Age: 10, DOB: "17-01-2001"},
@@ -112,11 +111,11 @@ func TestSelectStmt_Exec(t *testing.T) {
 	})
 
 	t.Run("successful_select_all", func(t *testing.T) {
-		wrapper := &MockWrapper{QueryRowsResult: sheets.QueryRowsResult{Rows: [][]interface{}{
+		wrapper := &MockWrapper{QueryRowsResult: QueryRowsResult{Rows: [][]interface{}{
 			{"name1", 10, "17-01-2001"},
 			{"name2", 11, "18-01-2000"},
 		}}}
-		store := &GoogleSheetRowStore{
+		store := &SheetRowStore{
 			wrapper: wrapper,
 			colsMapping: map[string]models.ColIdx{
 				rowIdxCol: {"A", 0},
@@ -130,7 +129,7 @@ func TestSelectStmt_Exec(t *testing.T) {
 				ColumnsWithFormula: []string{"name"}},
 		}
 		var out []person
-		stmt := newGoogleSheetSelectStmt(store, &out, []string{})
+		stmt := newSheetSelectStmt(store, &out, []string{})
 
 		expected := []person{
 			{Name: "name1", Age: 10, DOB: "17-01-2001"},
@@ -145,7 +144,7 @@ func TestSelectStmt_Exec(t *testing.T) {
 
 func TestGoogleSheetInsertStmt_convertRowToSlice(t *testing.T) {
 	wrapper := &MockWrapper{}
-	store := &GoogleSheetRowStore{
+	store := &SheetRowStore{
 		wrapper: wrapper,
 		colsMapping: map[string]models.ColIdx{
 			rowIdxCol: {"A", 0},
@@ -219,7 +218,7 @@ func TestGoogleSheetInsertStmt_convertRowToSlice(t *testing.T) {
 
 func TestGoogleSheetUpdateStmt_generateBatchUpdateRequests(t *testing.T) {
 	wrapper := &MockWrapper{}
-	store := &GoogleSheetRowStore{
+	store := &SheetRowStore{
 		wrapper:   wrapper,
 		sheetName: "sheet1",
 		colsMapping: map[string]models.ColIdx{
@@ -236,7 +235,7 @@ func TestGoogleSheetUpdateStmt_generateBatchUpdateRequests(t *testing.T) {
 	}
 
 	t.Run("successful", func(t *testing.T) {
-		stmt := newGoogleSheetUpdateStmt(
+		stmt := newSheetUpdateStmt(
 			store,
 			map[string]interface{}{
 				"name": "name1",
@@ -246,7 +245,7 @@ func TestGoogleSheetUpdateStmt_generateBatchUpdateRequests(t *testing.T) {
 		)
 
 		requests, err := stmt.generateBatchUpdateRequests([]int64{1, 2})
-		expected := []sheets.BatchUpdateRowsRequest{
+		expected := []BatchUpdateRowsRequest{
 			{
 				A1Range: models.NewA1Range(store.sheetName, "B1"),
 				Values:  [][]interface{}{{"name1"}},
@@ -278,13 +277,13 @@ func TestGoogleSheetUpdateStmt_generateBatchUpdateRequests(t *testing.T) {
 	})
 
 	t.Run("ieee754_safe_integers_successful", func(t *testing.T) {
-		stmt := newGoogleSheetUpdateStmt(store, map[string]interface{}{
+		stmt := newSheetUpdateStmt(store, map[string]interface{}{
 			"name": "name1",
 			"age":  int64(9007199254740992),
 		})
 
 		requests, err := stmt.generateBatchUpdateRequests([]int64{1, 2})
-		expected := []sheets.BatchUpdateRowsRequest{
+		expected := []BatchUpdateRowsRequest{
 			{
 				A1Range: models.NewA1Range(store.sheetName, "B1"),
 				Values:  [][]interface{}{{"name1"}},
@@ -308,7 +307,7 @@ func TestGoogleSheetUpdateStmt_generateBatchUpdateRequests(t *testing.T) {
 	})
 
 	t.Run("ieee754_safe_integers_unsuccessful", func(t *testing.T) {
-		stmt := newGoogleSheetUpdateStmt(
+		stmt := newSheetUpdateStmt(
 			store,
 			map[string]interface{}{
 				"name": "name1",

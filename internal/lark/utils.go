@@ -1,4 +1,4 @@
-package store
+package lark
 
 import (
 	"context"
@@ -32,20 +32,29 @@ func getSheetIDs(wrapper sheetsWrapper, spreadsheetToken string) (map[string]str
 
 func findScratchpadLocation(
 	wrapper sheetsWrapper,
-	spreadsheetID string,
-	scratchpadSheetName string,
+	spreadsheetToken string,
+	scratchpadSheetID string,
 ) (models.A1Range, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
 	result, err := wrapper.OverwriteRows(
 		ctx,
-		spreadsheetID,
-		models.NewA1Range(scratchpadSheetName, defaultScratchpadTableRange),
+		spreadsheetToken,
+		models.NewA1Range(scratchpadSheetID, defaultScratchpadTableRange),
 		[][]interface{}{{scratchpadBooked}},
 	)
 	if err != nil {
 		return models.A1Range{}, err
 	}
 	return result.UpdatedRange, nil
+}
+
+func convertToFormula(query string) map[string]interface{} {
+	// Must use this format (this was implicitly defined in
+	// https://open.larksuite.com/document/server-docs/docs/appendix/data-types-supported-by-sheets
+	return map[string]interface{}{
+		"type": "formula",
+		"text": query,
+	}
 }

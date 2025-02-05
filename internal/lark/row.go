@@ -1,29 +1,24 @@
-package store
+package lark
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"github.com/FreeLeh/GoFreeDB/internal/common"
-	"github.com/FreeLeh/GoFreeDB/internal/lark/sheets"
 	"github.com/FreeLeh/GoFreeDB/internal/models"
 	"time"
 )
 
-// LarkSheetRowStoreConfig defines a list of configurations that can be used to customise how the LarkSheetRowStore works.
-type LarkSheetRowStoreConfig struct {
+// SheetRowStoreConfig defines a list of configurations that can be used to customise how the SheetRowStore works.
+type SheetRowStoreConfig struct {
 	// Columns defines the list of column names.
 	// Note that the column ordering matters.
-	// The column ordering will be used for arranging the real columns in Lark Sheets.
-	// Changing the column ordering in this config but not in Lark Sheets will result in unexpected behaviour.
+	// The column ordering will be used for arranging the real columns in  Sheets.
+	// Changing the column ordering in this config but not in  Sheets will result in unexpected behaviour.
 	Columns []string
-
-	// ColumnsWithFormula defines the list of column names containing a Lark Sheet formula.
-	// Note that only string fields can have a formula.
-	ColumnsWithFormula []string
 }
 
-func (c LarkSheetRowStoreConfig) validate() error {
+func (c SheetRowStoreConfig) validate() error {
 	if len(c.Columns) == 0 {
 		return errors.New("columns must have at least one column")
 	}
@@ -33,7 +28,7 @@ func (c LarkSheetRowStoreConfig) validate() error {
 	return nil
 }
 
-type LarkSheetRowStore struct {
+type SheetRowStore struct {
 	wrapper             sheetsWrapper
 	spreadsheetToken    string
 	sheetName           string
@@ -43,18 +38,18 @@ type LarkSheetRowStore struct {
 	scratchpadLocation  models.A1Range
 	colsMapping         models.ColsMapping
 	colsWithFormula     *common.Set[string]
-	config              LarkSheetRowStoreConfig
+	config              SheetRowStoreConfig
 }
 
-// Select specifies which columns to return from the Lark Sheets when querying and the output variable
+// Select specifies which columns to return from the  Sheets when querying and the output variable
 // the data should be stored.
 // You can think of this operation like a SQL SELECT statement (with limitations).
 //
 // If "columns" is an empty slice of string, then all columns will be returned.
-// If a column is not found in the provided list of columns in `LarkSheetRowStoreConfig.Columns`, that column will be ignored.
+// If a column is not found in the provided list of columns in `SheetRowStoreConfig.Columns`, that column will be ignored.
 //
 // "output" must be a pointer to a slice of a data type.
-// The conversion from the Lark Sheets data into the slice will be done using https://github.com/mitchellh/mapstructure.
+// The conversion from the  Sheets data into the slice will be done using https://github.com/mitchellh/mapstructure.
 //
 // If you are providing a slice of structs into the "output" parameter, and you want to define the mapping between the
 // column name with the field name, you should add a "db" struct tag.
@@ -66,61 +61,61 @@ type LarkSheetRowStore struct {
 //		}
 //
 // Please note that calling Select() does not execute the query yet.
-// Call LarkSheetSelectStmt.Exec to actually execute the query.
-func (s *LarkSheetRowStore) Select(output interface{}, columns ...string) *LarkSheetSelectStmt {
-	return newLarkSheetSelectStmt(s, output, columns)
+// Call SheetSelectStmt.Exec to actually execute the query.
+func (s *SheetRowStore) Select(output interface{}, columns ...string) *SheetSelectStmt {
+	return newSheetSelectStmt(s, output, columns)
 }
 
-// Insert specifies the rows to be inserted into the Lark Sheets.
+// Insert specifies the rows to be inserted into the  Sheets.
 //
 // The underlying data type of each row must be a struct or a pointer to a struct.
 // Providing other data types will result in an error.
 //
 // By default, the column name will be following the struct field name (case-sensitive).
 // If you want to map the struct field name into another name, you can add a "db" struct tag
-// (see LarkSheetRowStore.Select docs for more details).
+// (see SheetRowStore.Select docs for more details).
 //
 // Please note that calling Insert() does not execute the insertion yet.
-// Call LarkSheetInsertStmt.Exec() to actually execute the insertion.
-func (s *LarkSheetRowStore) Insert(rows ...interface{}) *LarkSheetInsertStmt {
-	return newLarkSheetInsertStmt(s, rows)
+// Call SheetInsertStmt.Exec() to actually execute the insertion.
+func (s *SheetRowStore) Insert(rows ...interface{}) *SheetInsertStmt {
+	return newSheetInsertStmt(s, rows)
 }
 
 // Update specifies the new value for each of the targeted columns.
 //
 // The "colToValue" parameter specifies what value should be updated for which column.
 // Each value in the map[string]interface{} is going to be JSON marshalled.
-// If "colToValue" is empty, an error will be returned when LarkSheetUpdateStmt.Exec() is called.
-func (s *LarkSheetRowStore) Update(colToValue map[string]interface{}) *LarkSheetUpdateStmt {
-	return newLarkSheetUpdateStmt(s, colToValue)
+// If "colToValue" is empty, an error will be returned when SheetUpdateStmt.Exec() is called.
+func (s *SheetRowStore) Update(colToValue map[string]interface{}) *SheetUpdateStmt {
+	return newSheetUpdateStmt(s, colToValue)
 }
 
 // Delete prepares rows deletion operation.
 //
 // Please note that calling Delete() does not execute the deletion yet.
-// Call LarkSheetDeleteStmt.Exec() to actually execute the deletion.
-func (s *LarkSheetRowStore) Delete() *LarkSheetDeleteStmt {
-	return newLarkSheetDeleteStmt(s)
+// Call SheetDeleteStmt.Exec() to actually execute the deletion.
+func (s *SheetRowStore) Delete() *SheetDeleteStmt {
+	return newSheetDeleteStmt(s)
 }
 
 // Count prepares rows counting operation.
 //
 // Please note that calling Count() does not execute the query yet.
-// Call GoogleSheetCountStmt.Exec() to actually execute the query.
-func (s *LarkSheetRowStore) Count() *GoogleSheetCountStmt {
-	return newGoogleSheetCountStmt(s)
+// Call SheetCountStmt.Exec() to actually execute the query.
+func (s *SheetRowStore) Count() *SheetCountStmt {
+	return newSheetCountStmt(s)
 }
 
 // Close cleans up all held resources if any.
-func (s *LarkSheetRowStore) Close(_ context.Context) error {
+func (s *SheetRowStore) Close(_ context.Context) error {
 	return nil
 }
 
-func (s *LarkSheetRowStore) ensureHeaders() error {
+func (s *SheetRowStore) ensureHeaders() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	a1Range := models.NewA1Range(s.sheetName, defaultRowHeaderRange)
+	a1Range := models.NewA1Range(s.sheetID, defaultRowHeaderRange)
 	if err := s.wrapper.Clear(
 		ctx,
 		s.spreadsheetToken,
@@ -137,9 +132,9 @@ func (s *LarkSheetRowStore) ensureHeaders() error {
 	if _, err := s.wrapper.BatchUpdateRows(
 		ctx,
 		s.spreadsheetToken,
-		[]sheets.BatchUpdateRowsRequest{
+		[]BatchUpdateRowsRequest{
 			{
-				A1Range: models.NewA1Range(s.sheetName, defaultRowHeaderRange),
+				A1Range: models.NewA1Range(s.sheetID, defaultRowHeaderRange),
 				Values:  [][]interface{}{cols},
 			},
 		},
@@ -149,7 +144,7 @@ func (s *LarkSheetRowStore) ensureHeaders() error {
 	return nil
 }
 
-func (s *LarkSheetRowStore) validateAndFillSheetIDs() error {
+func (s *SheetRowStore) validateAndFillSheetIDs() error {
 	mapping, err := getSheetIDs(s.wrapper, s.spreadsheetToken)
 	if err != nil {
 		return err
@@ -171,29 +166,28 @@ func (s *LarkSheetRowStore) validateAndFillSheetIDs() error {
 	return nil
 }
 
-// NewLarkSheetRowStore creates an instance of the row based store with the given configuration.
+// NewSheetRowStore creates an instance of the row based store with the given configuration.
 // It will also try to create the sheet, in case it does not exist yet.
-func NewLarkSheetRowStore(
-	accessTokenGetter sheets.AccessTokenGetter,
+func NewSheetRowStore(
+	accessTokenGetter AccessTokenGetter,
 	spreadsheetToken string,
 	sheetName string,
-	config LarkSheetRowStoreConfig,
-) *LarkSheetRowStore {
+	config SheetRowStoreConfig,
+) *SheetRowStore {
 	if err := config.validate(); err != nil {
 		panic(err)
 	}
 
-	scratchpadSheetName := sheetName + scratchpadSheetNameSuffix
-	wrapper := sheets.NewWrapper(accessTokenGetter)
+	scratchpadSheetName := fmt.Sprintf(scratchpadSheetNameTemplate, sheetName, time.Now().UnixNano())
+	wrapper := NewWrapper(accessTokenGetter)
 	config = injectRIDCol(config)
 
-	store := &LarkSheetRowStore{
+	store := &SheetRowStore{
 		wrapper:             wrapper,
 		spreadsheetToken:    spreadsheetToken,
 		sheetName:           sheetName,
 		scratchpadSheetName: scratchpadSheetName,
 		colsMapping:         models.GenerateColumnMapping(config.Columns),
-		colsWithFormula:     common.NewSet(config.ColumnsWithFormula),
 		config:              config,
 	}
 
@@ -207,7 +201,11 @@ func NewLarkSheetRowStore(
 		panic(fmt.Errorf("error checking headers: %w", err))
 	}
 
-	scratchpadLocation, err := findScratchpadLocation(store.wrapper, store.spreadsheetToken, store.scratchpadSheetName)
+	scratchpadLocation, err := findScratchpadLocation(
+		store.wrapper,
+		store.spreadsheetToken,
+		store.scratchpadSheetID,
+	)
 	if err != nil {
 		panic(fmt.Errorf("error finding a scratchpad location in sheet %s: %w", store.scratchpadSheetName, err))
 	}
@@ -219,7 +217,7 @@ func NewLarkSheetRowStore(
 // The additional rowIdxCol column is needed to differentiate which row is truly empty and which one is not.
 // Currently, we use this for detecting which rows are really empty for UPDATE without WHERE clause.
 // Otherwise, it will always update all rows (instead of the non-empty rows only).
-func injectRIDCol(config LarkSheetRowStoreConfig) LarkSheetRowStoreConfig {
+func injectRIDCol(config SheetRowStoreConfig) SheetRowStoreConfig {
 	newCols := make([]string, 0, len(config.Columns)+1)
 	newCols = append(newCols, rowIdxCol)
 	newCols = append(newCols, config.Columns...)

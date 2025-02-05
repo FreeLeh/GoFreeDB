@@ -1,4 +1,4 @@
-package sheets
+package lark
 
 import (
 	"context"
@@ -235,14 +235,16 @@ func TestBatchUpdateRows(t *testing.T) {
 			Times(1)
 		defer gock.Off()
 
-		expectedReq := []map[string]interface{}{
-			{
-				"range":  "Sheet1!A1:B2",
-				"values": [][]interface{}{{"1", "2"}, {"3", "4"}},
-			},
-			{
-				"range":  "Sheet1!C1:D2",
-				"values": [][]interface{}{{"5", "6"}, {"7", "8"}},
+		expectedReq := map[string]interface{}{
+			"valueRanges": []map[string]interface{}{
+				{
+					"range":  "Sheet1!A1:B2",
+					"values": [][]interface{}{{"1", "2"}, {"3", "4"}},
+				},
+				{
+					"range":  "Sheet1!C1:D2",
+					"values": [][]interface{}{{"5", "6"}, {"7", "8"}},
+				},
 			},
 		}
 
@@ -369,10 +371,12 @@ func TestClear(t *testing.T) {
 			Times(1)
 		defer gock.Off()
 
-		expectedReq := []map[string]interface{}{
-			{
-				"range":  "Sheet1!A1:B2",
-				"values": [][]interface{}{{"", ""}, {"", ""}},
+		expectedReq := map[string]interface{}{
+			"valueRanges": []map[string]interface{}{
+				{
+					"range":  "Sheet1!A1:B2",
+					"values": [][]interface{}{{"", ""}, {"", ""}},
+				},
 			},
 		}
 
@@ -543,7 +547,7 @@ func TestGetSingleRange(t *testing.T) {
 			getSingleRangeURL,
 			testSpreadsheetToken,
 			"sheet1!A1:C500",
-			valueRenderOptionUnformattedValue,
+			valueRenderOptionFormattedValue,
 		)
 
 		gock.New(url).
@@ -598,7 +602,7 @@ func TestGetSingleRange(t *testing.T) {
 			getSingleRangeURL,
 			testSpreadsheetToken,
 			"sheet1!A1:C500",
-			valueRenderOptionUnformattedValue,
+			valueRenderOptionFormattedValue,
 		)
 
 		gock.New(url).
@@ -625,7 +629,7 @@ func TestGetSingleRange(t *testing.T) {
 			getSingleRangeURL,
 			testSpreadsheetToken,
 			"sheet1!A1:C500",
-			valueRenderOptionUnformattedValue,
+			valueRenderOptionFormattedValue,
 		)
 
 		gock.New(url).
@@ -696,14 +700,12 @@ func TestQueryRows(t *testing.T) {
 			},
 			updateResultStatusCode: http.StatusOK,
 			getSingleResult: [][]interface{}{
-				{"col1", "col2"},
 				{"A", 123.0},
 				{"B", 456.0},
 			},
 			getSingleStatusCode: http.StatusOK,
 			expected: QueryRowsResult{
 				Rows: [][]interface{}{
-					{"col1", "col2"},
 					{"A", 123.0},
 					{"B", 456.0},
 				},
@@ -739,7 +741,7 @@ func TestQueryRows(t *testing.T) {
 				getSingleRangeURL,
 				testSpreadsheetToken,
 				"sheet1!A1:C500",
-				valueRenderOptionUnformattedValue,
+				valueRenderOptionFormattedValue,
 			)
 			gock.New(getSingleURL).
 				Get("").
@@ -758,6 +760,7 @@ func TestQueryRows(t *testing.T) {
 			res, err := wrapper.QueryRows(
 				context.Background(),
 				"spreadsheet123",
+				"sheet1",
 				models.NewA1Range("sheet1", "A1:C500"),
 				"query",
 			)

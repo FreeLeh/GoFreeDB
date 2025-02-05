@@ -1,4 +1,4 @@
-package store
+package google
 
 import (
 	"context"
@@ -28,7 +28,7 @@ func TestGoogleSheetKVStoreV2_AppendOnly_Integration(t *testing.T) {
 		googleAuth,
 		spreadsheetID,
 		sheetName,
-		GoogleSheetKVStoreV2Config{Mode: models.KVModeAppendOnly},
+		SheetKVStoreV2Config{Mode: models.KVModeAppendOnly},
 	)
 	defer func() {
 		time.Sleep(time.Second)
@@ -76,7 +76,7 @@ func TestNewGoogleSheetKVStoreV2_Default_Integration(t *testing.T) {
 		googleAuth,
 		spreadsheetID,
 		sheetName,
-		GoogleSheetKVStoreV2Config{Mode: models.KVModeDefault},
+		SheetKVStoreV2Config{Mode: models.KVModeDefault},
 	)
 	defer func() {
 		time.Sleep(time.Second)

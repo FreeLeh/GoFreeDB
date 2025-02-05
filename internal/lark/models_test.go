@@ -1,4 +1,4 @@
-package store
+package lark
 
 import (
 	"context"
@@ -13,16 +13,18 @@ type larkAuthConfig struct {
 }
 
 func getIntegrationTestInfo() (string, larkAuthConfig, bool) {
-	spreadsheetID := os.Getenv("INTEGRATION_TEST_LARK_SPREADSHEET_TOKEN")
+	return "RQYusDj9BhtUQUtXyTAuTHristf", larkAuthConfig{AppID: "cli_a70676775138d009", AppSecret: "v9iGZ2NrXtXFjbr0TU5dUg3axQkWetyC"}, true
+
+	spreadsheetToken := os.Getenv("INTEGRATION_TEST_LARK_SPREADSHEET_TOKEN")
 	authJSON := os.Getenv("INTEGRATION_TEST_LARK_AUTH_JSON")
 	_, isGithubActions := os.LookupEnv("GITHUB_ACTIONS")
 
-	var larkAuthConfig larkAuthConfig
-	if err := json.Unmarshal([]byte(authJSON), &larkAuthConfig); err != nil {
+	var authCfg larkAuthConfig
+	if err := json.Unmarshal([]byte(authJSON), &authCfg); err != nil {
 		panic(err)
 	}
 
-	return spreadsheetID, larkAuthConfig, isGithubActions && spreadsheetID != "" && authJSON != ""
+	return spreadsheetToken, authCfg, isGithubActions && spreadsheetToken != "" && authJSON != ""
 }
 
 func deleteSheet(t *testing.T, wrapper sheetsWrapper, spreadsheetToken string, sheetNames []string) {

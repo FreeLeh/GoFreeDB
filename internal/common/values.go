@@ -50,3 +50,7 @@ func isIEEE754SafeInteger(value int64) error {
 	}
 	return errors.New("integer provided is not within the IEEE 754 safe integer boundary of [-(2^53), 2^53], the integer may have a precision lost")
 }
+
+func SingleQuote(s string) string {
+	return fmt.Sprintf("'%s'", s)
+}

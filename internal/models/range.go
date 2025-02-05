@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -10,6 +11,10 @@ type A1Range struct {
 	SheetName string
 	FromCell  string
 	ToCell    string
+}
+
+func (r A1Range) Range() string {
+	return fmt.Sprintf("%s:%s", r.FromCell, r.ToCell)
 }
 
 func (r A1Range) NumCols() int {

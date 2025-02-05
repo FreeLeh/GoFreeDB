@@ -1,4 +1,4 @@
-package sheets
+package lark
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 	"net/http"
 )
 
-//go:generate mockgen -destination=wrapper_mock.go -package=sheets -build_constraint=gofreedb_test . AccessTokenGetter
+//go:generate mockgen -destination=wrapper_mock.go -package=lark -build_constraint=gofreedb_test . AccessTokenGetter
 type AccessTokenGetter interface {
 	AccessToken() (string, error)
 }
@@ -127,7 +127,12 @@ func (w *Wrapper) getSingleRange(
 	spreadsheetToken string,
 	a1Range models.A1Range,
 ) (getSingleRangeResult, error) {
-	url := fmt.Sprintf(getSingleRangeURL, spreadsheetToken, a1Range.Original, valueRenderOptionUnformattedValue)
+	url := fmt.Sprintf(
+		getSingleRangeURL,
+		spreadsheetToken,
+		a1Range.Original,
+		valueRenderOptionFormattedValue,
+	)
 
 	var resp baseHTTPResp[getSingleRangeHTTPResp]
 	if err := w.callAPI(
@@ -159,16 +164,25 @@ func (w *Wrapper) getSingleRange(
 func (w *Wrapper) QueryRows(
 	ctx context.Context,
 	spreadsheetToken string,
+	sheetName string,
 	a1Range models.A1Range,
 	query string,
 ) (QueryRowsResult, error) {
+	// Note that for non-QUERY based operations, we use the sheet ID.
+	// But for QUERY formula, somehow we need to use the sheet name instead.
+	// This doesn't seem to be well documented anywhere.
+	// The messed up part is the API depends on Sheet ID, but formula depends on the sheet name.
 	updateResult, err := w.BatchUpdateRows(
 		ctx,
 		spreadsheetToken,
 		[]BatchUpdateRowsRequest{
 			{
 				A1Range: a1Range,
-				Values:  [][]interface{}{{query}},
+				Values: [][]interface{}{
+					{
+						convertToFormula(fmt.Sprintf(queryFormulaTemplate, sheetName, query)),
+					},
+				},
 			},
 		},
 	)
@@ -185,11 +199,19 @@ func (w *Wrapper) QueryRows(
 		)
 	}
 
+	// TODO: there is a problem with the get single range API for =QUERY() statements.
+	// It will only get the first cell. The rest of the cells will be empty.
+	// This is most likely because only the first cell has the QUERY() value, the rest is dynamically inserted by Lark
+	// on the UI (i.e. not stored in the DB).
+	//
+	// The only way is to double check with Lark and/or find a way where the =QUERY() result is not just a virtual VIEW,
+	// but MATERIALIZED too. Not sure how to do this.
 	getSingleResult, err := w.getSingleRange(ctx, spreadsheetToken, a1Range)
 	if err != nil {
 		return QueryRowsResult{}, err
 	}
 
+	// Must skip the first row as it is the headers.
 	result := QueryRowsResult{
 		Rows: getSingleResult.Values,
 	}
@@ -262,11 +284,12 @@ func (w *Wrapper) Clear(
 ) error {
 	requests := make([]BatchUpdateRowsRequest, 0, len(ranges))
 	for _, rng := range ranges {
-		values := make([][]interface{}, 0, rng.NumRows())
+		numRows, numCols := rng.NumRows(), rng.NumCols()
+		values := make([][]interface{}, 0, numRows)
 
-		for row := 0; row < rng.NumRows(); row++ {
-			rowValues := make([]interface{}, 0, rng.NumCols())
-			for col := 0; col < rng.NumCols(); col++ {
+		for row := 0; row < numRows; row++ {
+			rowValues := make([]interface{}, 0, numCols)
+			for col := 0; col < numCols; col++ {
 				rowValues = append(rowValues, "")
 			}
 			values = append(values, rowValues)
@@ -314,7 +337,7 @@ func (w *Wrapper) batchUpdateRows(
 		http.MethodPost,
 		name,
 		url,
-		req,
+		map[string]interface{}{"valueRanges": req},
 		&resp,
 	); err != nil {
 		return nil, err

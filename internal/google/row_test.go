@@ -1,4 +1,4 @@
-package store
+package google
 
 import (
 	"context"
@@ -7,11 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
+	"github.com/FreeLeh/GoFreeDB/google/auth"
 	"github.com/FreeLeh/GoFreeDB/internal/common"
 	"github.com/FreeLeh/GoFreeDB/internal/models"
-	"github.com/FreeLeh/GoFreeDB/lark/auth"
+	"github.com/stretchr/testify/assert"
 )
 
 type testPerson struct {
@@ -21,22 +20,22 @@ type testPerson struct {
 }
 
 func TestGoogleSheetRowStore_Integration(t *testing.T) {
-	spreadsheetID, authCfg, shouldRun := getIntegrationTestInfo()
+	spreadsheetID, authJSON, shouldRun := getIntegrationTestInfo()
 	if !shouldRun {
 		t.Skip("integration test should be run only in GitHub Actions")
 	}
 	sheetName := fmt.Sprintf("integration_row_%d", common.CurrentTimeMs())
 
-	larkAuth, err := auth.NewTenantService(authCfg.AppID, authCfg.AppSecret, auth.Config{})
+	googleAuth, err := auth.NewServiceFromJSON([]byte(authJSON), auth.GoogleSheetsReadWrite, auth.ServiceConfig{})
 	if err != nil {
 		t.Fatalf("error when instantiating google auth: %s", err)
 	}
 
-	db := NewLarkSheetRowStore(
-		larkAuth,
+	db := NewGoogleSheetRowStore(
+		googleAuth,
 		spreadsheetID,
 		sheetName,
-		LarkSheetRowStoreConfig{Columns: []string{"name", "age", "dob"}},
+		GoogleSheetRowStoreConfig{Columns: []string{"name", "age", "dob"}},
 	)
 	defer func() {
 		time.Sleep(time.Second)
@@ -78,7 +77,6 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 	assert.Nil(t, err)
 
 	expected := []testPerson{
-		{"name2", 11, "2000-01-01"},
 		{"name3", 9007199254740992, "2001-01-01"},
 	}
 
@@ -87,6 +85,7 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 		Where("name = ? OR name = ?", "name2", "name3").
 		OrderBy([]models.ColumnOrderBy{{"name", models.OrderByAsc}}).
 		Limit(2).
+		Offset(1).
 		Exec(context.Background())
 	assert.Nil(t, err)
 	assert.Equal(t, expected, out)
@@ -128,22 +127,22 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 }
 
 func TestGoogleSheetRowStore_Integration_EdgeCases(t *testing.T) {
-	spreadsheetID, authCfg, shouldRun := getIntegrationTestInfo()
+	spreadsheetID, authJSON, shouldRun := getIntegrationTestInfo()
 	if !shouldRun {
 		t.Skip("integration test should be run only in GitHub Actions")
 	}
 	sheetName := fmt.Sprintf("integration_row_%d", common.CurrentTimeMs())
 
-	larkAuth, err := auth.NewTenantService(authCfg.AppID, authCfg.AppSecret, auth.Config{})
+	googleAuth, err := auth.NewServiceFromJSON([]byte(authJSON), auth.GoogleSheetsReadWrite, auth.ServiceConfig{})
 	if err != nil {
 		t.Fatalf("error when instantiating google auth: %s", err)
 	}
 
-	db := NewLarkSheetRowStore(
-		larkAuth,
+	db := NewGoogleSheetRowStore(
+		googleAuth,
 		spreadsheetID,
 		sheetName,
-		LarkSheetRowStoreConfig{Columns: []string{"name", "age", "dob"}},
+		GoogleSheetRowStoreConfig{Columns: []string{"name", "age", "dob"}},
 	)
 	defer func() {
 		time.Sleep(time.Second)
@@ -184,22 +183,22 @@ type formulaReadModel struct {
 }
 
 func TestGoogleSheetRowStore_Formula(t *testing.T) {
-	spreadsheetID, authCfg, shouldRun := getIntegrationTestInfo()
+	spreadsheetID, authJSON, shouldRun := getIntegrationTestInfo()
 	if !shouldRun {
 		t.Skip("integration test should be run only in GitHub Actions")
 	}
 	sheetName := fmt.Sprintf("integration_row_%d", common.CurrentTimeMs())
 
-	larkAuth, err := auth.NewTenantService(authCfg.AppID, authCfg.AppSecret, auth.Config{})
+	googleAuth, err := auth.NewServiceFromJSON([]byte(authJSON), auth.GoogleSheetsReadWrite, auth.ServiceConfig{})
 	if err != nil {
 		t.Fatalf("error when instantiating google auth: %s", err)
 	}
 
-	db := NewLarkSheetRowStore(
-		larkAuth,
+	db := NewGoogleSheetRowStore(
+		googleAuth,
 		spreadsheetID,
 		sheetName,
-		LarkSheetRowStoreConfig{
+		GoogleSheetRowStoreConfig{
 			Columns:            []string{"value"},
 			ColumnsWithFormula: []string{"value"},
 		},
@@ -232,13 +231,13 @@ func TestGoogleSheetRowStore_Formula(t *testing.T) {
 }
 
 func TestInjectTimestampCol(t *testing.T) {
-	result := injectRIDCol(LarkSheetRowStoreConfig{Columns: []string{"col1", "col2"}})
-	assert.Equal(t, LarkSheetRowStoreConfig{Columns: []string{rowIdxCol, "col1", "col2"}}, result)
+	result := injectRIDCol(GoogleSheetRowStoreConfig{Columns: []string{"col1", "col2"}})
+	assert.Equal(t, GoogleSheetRowStoreConfig{Columns: []string{rowIdxCol, "col1", "col2"}}, result)
 }
 
-func TestLarkSheetRowStoreConfig_validate(t *testing.T) {
+func TestGoogleSheetRowStoreConfig_validate(t *testing.T) {
 	t.Run("empty_columns", func(t *testing.T) {
-		conf := LarkSheetRowStoreConfig{Columns: []string{}}
+		conf := GoogleSheetRowStoreConfig{Columns: []string{}}
 		assert.NotNil(t, conf.validate())
 	})
 
@@ -248,7 +247,7 @@ func TestLarkSheetRowStoreConfig_validate(t *testing.T) {
 			columns = append(columns, strconv.FormatInt(int64(i), 10))
 		}
 
-		conf := LarkSheetRowStoreConfig{Columns: columns}
+		conf := GoogleSheetRowStoreConfig{Columns: columns}
 		assert.NotNil(t, conf.validate())
 	})
 
@@ -258,7 +257,7 @@ func TestLarkSheetRowStoreConfig_validate(t *testing.T) {
 			columns = append(columns, strconv.FormatInt(int64(i), 10))
 		}
 
-		conf := LarkSheetRowStoreConfig{Columns: columns}
+		conf := GoogleSheetRowStoreConfig{Columns: columns}
 		assert.Nil(t, conf.validate())
 	})
 }
