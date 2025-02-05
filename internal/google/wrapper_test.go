@@ -1,93 +1,27 @@
-package sheets
+package google
 
 import (
 	"context"
+	"github.com/FreeLeh/GoFreeDB/internal/models"
 	"net/http"
 	"testing"
 
 	"github.com/FreeLeh/GoFreeDB/google/auth"
 	"github.com/FreeLeh/GoFreeDB/internal/google/fixtures"
+	"github.com/h2non/gock"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/h2non/gock.v1"
 )
-
-func TestCreateSpreadsheet(t *testing.T) {
-	path := fixtures.PathToFixture("service_account.json")
-
-	auth, err := auth.NewServiceFromFile(path, []string{}, auth.ServiceConfig{})
-	assert.Nil(t, err, "should not have any error instantiating a new service account client")
-
-	wrapper, err := NewWrapper(auth)
-	assert.Nil(t, err, "should not have any error instantiating a new sheets wrapper")
-
-	gock.InterceptClient(auth.HTTPClient())
-
-	t.Run("successful", func(t *testing.T) {
-		expectedReqBody := map[string]map[string]string{
-			"properties": {
-				"title": "title",
-			},
-		}
-		resp := map[string]string{"spreadsheetId": "123"}
-
-		gock.New("https://sheets.googleapis.com").
-			Post("/v4/spreadsheets").
-			JSON(expectedReqBody).
-			Reply(http.StatusOK).
-			JSON(resp)
-
-		sid, err := wrapper.CreateSpreadsheet(context.Background(), "title")
-		assert.Equal(t, "123", sid, "returned spreadsheetID does not match with the mocked spreadsheetID")
-		assert.Nil(t, err, "should not have any error creating a new spreadsheet")
-	})
-
-	t.Run("http500", func(t *testing.T) {
-		expectedReqBody := map[string]map[string]string{
-			"properties": {
-				"title": "title",
-			},
-		}
-
-		gock.New("https://sheets.googleapis.com").
-			Post("/v4/spreadsheets").
-			JSON(expectedReqBody).
-			Reply(http.StatusInternalServerError)
-
-		sid, err := wrapper.CreateSpreadsheet(context.Background(), "title")
-		assert.Equal(t, "", sid, "returned spreadsheetID should be empty as there is HTTP error")
-		assert.NotNil(t, err, "should have an error when creating the spreadsheet as there is HTTP error")
-	})
-
-	t.Run("empty_title", func(t *testing.T) {
-		expectedReqBody := map[string]map[string]string{
-			"properties": {
-				"title": "title",
-			},
-		}
-		resp := map[string]string{"spreadsheetId": "123"}
-
-		gock.New("https://sheets.googleapis.com").
-			Post("/v4/spreadsheets").
-			JSON(expectedReqBody).
-			Reply(http.StatusOK).
-			JSON(resp)
-
-		sid, err := wrapper.CreateSpreadsheet(context.Background(), "title")
-		assert.Equal(t, "123", sid, "returned spreadsheetID does not match with the mocked spreadsheetID")
-		assert.Nil(t, err, "should not have any error creating a new spreadsheet")
-	})
-}
 
 func TestCreateSheet(t *testing.T) {
 	path := fixtures.PathToFixture("service_account.json")
 
-	auth, err := auth.NewServiceFromFile(path, []string{}, auth.ServiceConfig{})
+	googleAuthService, err := auth.NewServiceFromFile(path, []string{}, auth.ServiceConfig{})
 	assert.Nil(t, err, "should not have any error instantiating a new service account client")
 
-	wrapper, err := NewWrapper(auth)
+	wrapper, err := NewWrapper(googleAuthService)
 	assert.Nil(t, err, "should not have any error instantiating a new sheets wrapper")
 
-	gock.InterceptClient(auth.HTTPClient())
+	gock.InterceptClient(googleAuthService.HTTPClient())
 
 	t.Run("successful", func(t *testing.T) {
 		expectedReqBody := map[string][]map[string]map[string]map[string]string{
@@ -181,13 +115,13 @@ func TestCreateSheet(t *testing.T) {
 func TestInsertAppendRows(t *testing.T) {
 	path := fixtures.PathToFixture("service_account.json")
 
-	auth, err := auth.NewServiceFromFile(path, []string{}, auth.ServiceConfig{})
+	googleAuthService, err := auth.NewServiceFromFile(path, []string{}, auth.ServiceConfig{})
 	assert.Nil(t, err, "should not have any error instantiating a new service account client")
 
-	wrapper, err := NewWrapper(auth)
+	wrapper, err := NewWrapper(googleAuthService)
 	assert.Nil(t, err, "should not have any error instantiating a new sheets wrapper")
 
-	gock.InterceptClient(auth.HTTPClient())
+	gock.InterceptClient(googleAuthService.HTTPClient())
 
 	t.Run("successful", func(t *testing.T) {
 		expectedParams := map[string]string{
@@ -232,10 +166,16 @@ func TestInsertAppendRows(t *testing.T) {
 			JSON(resp)
 
 		values := [][]interface{}{{"1", "2"}, {"3", "4"}}
-		res, err := wrapper.insertRows(context.Background(), "123", "Sheet1!A1:A2", values, appendModeOverwrite)
+		res, err := wrapper.insertRows(
+			context.Background(),
+			"123",
+			models.NewA1RangeFromString("Sheet1!A1:A2"),
+			values,
+			appendModeOverwrite,
+		)
 
 		assert.Nil(t, err, "should not have any error inserting rows")
-		assert.Equal(t, NewA1Range("Sheet1!A1:B3"), res.UpdatedRange)
+		assert.Equal(t, models.NewA1RangeFromString("Sheet1!A1:B3"), res.UpdatedRange)
 		assert.Equal(t, int64(2), res.UpdatedRows)
 		assert.Equal(t, int64(2), res.UpdatedColumns)
 		assert.Equal(t, int64(4), res.UpdatedCells)
@@ -265,10 +205,16 @@ func TestInsertAppendRows(t *testing.T) {
 			Reply(http.StatusInternalServerError)
 
 		values := [][]interface{}{{"1", "2"}, {"3", "4"}}
-		res, err := wrapper.insertRows(context.Background(), "123", "Sheet1!A1:A2", values, appendModeOverwrite)
+		res, err := wrapper.insertRows(
+			context.Background(),
+			"123",
+			models.NewA1RangeFromString("Sheet1!A1:A2"),
+			values,
+			appendModeOverwrite,
+		)
 
 		assert.NotNil(t, err, "should have error inserting a new row")
-		assert.Equal(t, NewA1Range(""), res.UpdatedRange)
+		assert.Equal(t, models.NewA1RangeFromString(""), res.UpdatedRange)
 		assert.Equal(t, int64(0), res.UpdatedRows)
 		assert.Equal(t, int64(0), res.UpdatedColumns)
 		assert.Equal(t, int64(0), res.UpdatedCells)
@@ -279,13 +225,13 @@ func TestInsertAppendRows(t *testing.T) {
 func TestUpdateRows(t *testing.T) {
 	path := fixtures.PathToFixture("service_account.json")
 
-	auth, err := auth.NewServiceFromFile(path, []string{}, auth.ServiceConfig{})
+	googleAuthService, err := auth.NewServiceFromFile(path, []string{}, auth.ServiceConfig{})
 	assert.Nil(t, err, "should not have any error instantiating a new service account client")
 
-	wrapper, err := NewWrapper(auth)
+	wrapper, err := NewWrapper(googleAuthService)
 	assert.Nil(t, err, "should not have any error instantiating a new sheets wrapper")
 
-	gock.InterceptClient(auth.HTTPClient())
+	gock.InterceptClient(googleAuthService.HTTPClient())
 
 	t.Run("successful", func(t *testing.T) {
 		expectedParams := map[string]string{
@@ -325,10 +271,15 @@ func TestUpdateRows(t *testing.T) {
 			JSON(resp)
 
 		values := [][]interface{}{{"1", "2"}, {"3", "4"}}
-		res, err := wrapper.UpdateRows(context.Background(), "123", "Sheet1!A1:A2", values)
+		res, err := wrapper.UpdateRows(
+			context.Background(),
+			"123",
+			models.NewA1RangeFromString("Sheet1!A1:A2"),
+			values,
+		)
 
 		assert.Nil(t, err, "should not have any error inserting rows")
-		assert.Equal(t, NewA1Range("Sheet1!A1:B3"), res.UpdatedRange)
+		assert.Equal(t, models.NewA1RangeFromString("Sheet1!A1:B3"), res.UpdatedRange)
 		assert.Equal(t, int64(2), res.UpdatedRows)
 		assert.Equal(t, int64(2), res.UpdatedColumns)
 		assert.Equal(t, int64(4), res.UpdatedCells)
@@ -357,10 +308,15 @@ func TestUpdateRows(t *testing.T) {
 			Reply(http.StatusInternalServerError)
 
 		values := [][]interface{}{{"1", "2"}, {"3", "4"}}
-		res, err := wrapper.UpdateRows(context.Background(), "123", "Sheet1!A1:A2", values)
+		res, err := wrapper.UpdateRows(
+			context.Background(),
+			"123",
+			models.NewA1RangeFromString("Sheet1!A1:A2"),
+			values,
+		)
 
 		assert.NotNil(t, err, "should have error inserting a new row")
-		assert.Equal(t, NewA1Range(""), res.UpdatedRange)
+		assert.Equal(t, models.NewA1RangeFromString(""), res.UpdatedRange)
 		assert.Equal(t, int64(0), res.UpdatedRows)
 		assert.Equal(t, int64(0), res.UpdatedColumns)
 		assert.Equal(t, int64(0), res.UpdatedCells)
@@ -371,13 +327,13 @@ func TestUpdateRows(t *testing.T) {
 func TestBatchUpdateRows(t *testing.T) {
 	path := fixtures.PathToFixture("service_account.json")
 
-	auth, err := auth.NewServiceFromFile(path, []string{}, auth.ServiceConfig{})
+	googleAuthService, err := auth.NewServiceFromFile(path, []string{}, auth.ServiceConfig{})
 	assert.Nil(t, err, "should not have any error instantiating a new service account client")
 
-	wrapper, err := NewWrapper(auth)
+	wrapper, err := NewWrapper(googleAuthService)
 	assert.Nil(t, err, "should not have any error instantiating a new sheets wrapper")
 
-	gock.InterceptClient(auth.HTTPClient())
+	gock.InterceptClient(googleAuthService.HTTPClient())
 
 	t.Run("successful", func(t *testing.T) {
 		expectedReqBody := map[string]interface{}{
@@ -451,11 +407,11 @@ func TestBatchUpdateRows(t *testing.T) {
 
 		requests := []BatchUpdateRowsRequest{
 			{
-				A1Range: "Sheet1!A1:A2",
+				A1Range: models.NewA1RangeFromString("Sheet1!A1:A2"),
 				Values:  [][]interface{}{{"VA1"}, {"VA2"}},
 			},
 			{
-				A1Range: "Sheet1!B1:B2",
+				A1Range: models.NewA1RangeFromString("Sheet1!B1:B2"),
 				Values:  [][]interface{}{{"VB1"}, {"VB2"}},
 			},
 		}
@@ -463,14 +419,14 @@ func TestBatchUpdateRows(t *testing.T) {
 
 		expected := BatchUpdateRowsResult{
 			{
-				UpdatedRange:   NewA1Range("Sheet1!A1:A2"),
+				UpdatedRange:   models.NewA1RangeFromString("Sheet1!A1:A2"),
 				UpdatedRows:    2,
 				UpdatedColumns: 1,
 				UpdatedCells:   2,
 				UpdatedValues:  [][]interface{}{{"VA1"}, {"VA2"}},
 			},
 			{
-				UpdatedRange:   NewA1Range("Sheet1!B1:B2"),
+				UpdatedRange:   models.NewA1RangeFromString("Sheet1!B1:B2"),
 				UpdatedRows:    2,
 				UpdatedColumns: 1,
 				UpdatedCells:   2,
@@ -513,11 +469,11 @@ func TestBatchUpdateRows(t *testing.T) {
 
 		requests := []BatchUpdateRowsRequest{
 			{
-				A1Range: "Sheet1!A1:A2",
+				A1Range: models.NewA1RangeFromString("Sheet1!A1:A2"),
 				Values:  [][]interface{}{{"VA1"}, {"VA2"}},
 			},
 			{
-				A1Range: "Sheet1!B1:B2",
+				A1Range: models.NewA1RangeFromString("Sheet1!B1:B2"),
 				Values:  [][]interface{}{{"VB1"}, {"VB2"}},
 			},
 		}
@@ -531,13 +487,13 @@ func TestBatchUpdateRows(t *testing.T) {
 func TestClear(t *testing.T) {
 	path := fixtures.PathToFixture("service_account.json")
 
-	auth, err := auth.NewServiceFromFile(path, []string{}, auth.ServiceConfig{})
+	googleAuthService, err := auth.NewServiceFromFile(path, []string{}, auth.ServiceConfig{})
 	assert.Nil(t, err, "should not have any error instantiating a new service account client")
 
-	wrapper, err := NewWrapper(auth)
+	wrapper, err := NewWrapper(googleAuthService)
 	assert.Nil(t, err, "should not have any error instantiating a new sheets wrapper")
 
-	gock.InterceptClient(auth.HTTPClient())
+	gock.InterceptClient(googleAuthService.HTTPClient())
 
 	t.Run("successful", func(t *testing.T) {
 		expectedReqBody := map[string][]string{
@@ -554,7 +510,14 @@ func TestClear(t *testing.T) {
 			Reply(http.StatusOK).
 			JSON(resp)
 
-		res, err := wrapper.Clear(context.Background(), "123", []string{"Sheet1!A1:B3", "Sheet1!B4:C5"})
+		res, err := wrapper.Clear(
+			context.Background(),
+			"123",
+			[]models.A1Range{
+				models.NewA1RangeFromString("Sheet1!A1:B3"),
+				models.NewA1RangeFromString("Sheet1!B4:C5"),
+			},
+		)
 		assert.Nil(t, err, "should not have any error clearing rows")
 		assert.Equal(t, res, []string{"Sheet1!A1:B3", "Sheet1!B4:C5"})
 	})
@@ -569,7 +532,14 @@ func TestClear(t *testing.T) {
 			JSON(expectedReqBody).
 			Reply(http.StatusInternalServerError)
 
-		res, err := wrapper.Clear(context.Background(), "123", []string{"Sheet1!A1:B3", "Sheet1!B4:C5"})
+		res, err := wrapper.Clear(
+			context.Background(),
+			"123",
+			[]models.A1Range{
+				models.NewA1RangeFromString("Sheet1!A1:B3"),
+				models.NewA1RangeFromString("Sheet1!B4:C5"),
+			},
+		)
 		assert.NotNil(t, err, "should have error clearing rows")
 		assert.Equal(t, res, []string(nil))
 	})
@@ -578,13 +548,13 @@ func TestClear(t *testing.T) {
 func TestQueryRows(t *testing.T) {
 	path := fixtures.PathToFixture("service_account.json")
 
-	auth, err := auth.NewServiceFromFile(path, []string{}, auth.ServiceConfig{})
+	googleAuthService, err := auth.NewServiceFromFile(path, []string{}, auth.ServiceConfig{})
 	assert.Nil(t, err, "should not have any error instantiating a new service account client")
 
-	wrapper, err := NewWrapper(auth)
+	wrapper, err := NewWrapper(googleAuthService)
 	assert.Nil(t, err, "should not have any error instantiating a new sheets wrapper")
 
-	gock.InterceptClient(auth.HTTPClient())
+	gock.InterceptClient(googleAuthService.HTTPClient())
 
 	t.Run("successful", func(t *testing.T) {
 		expectedParams := map[string]string{

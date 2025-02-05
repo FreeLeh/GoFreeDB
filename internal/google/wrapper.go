@@ -1,10 +1,11 @@
-package sheets
+package google
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/FreeLeh/GoFreeDB/internal/models"
 	"io"
 	"net/http"
 	"net/url"
@@ -22,18 +23,6 @@ type AuthClient interface {
 type Wrapper struct {
 	service   *sheets.Service
 	rawClient *http.Client
-}
-
-func (w *Wrapper) CreateSpreadsheet(ctx context.Context, title string) (string, error) {
-	createSpreadsheetReq := w.service.Spreadsheets.Create(&sheets.Spreadsheet{
-		Properties: &sheets.SpreadsheetProperties{Title: title},
-	}).Context(ctx)
-
-	spreadsheet, err := createSpreadsheetReq.Do()
-	if err != nil {
-		return "", err
-	}
-	return spreadsheet.SpreadsheetId, nil
 }
 
 func (w *Wrapper) CreateSheet(ctx context.Context, spreadsheetID string, sheetName string) error {
@@ -86,7 +75,7 @@ func (w *Wrapper) DeleteSheets(ctx context.Context, spreadsheetID string, sheetI
 func (w *Wrapper) InsertRows(
 	ctx context.Context,
 	spreadsheetID string,
-	a1Range string,
+	a1Range models.A1Range,
 	values [][]interface{},
 ) (InsertRowsResult, error) {
 	return w.insertRows(ctx, spreadsheetID, a1Range, values, appendModeInsert)
@@ -95,7 +84,7 @@ func (w *Wrapper) InsertRows(
 func (w *Wrapper) OverwriteRows(
 	ctx context.Context,
 	spreadsheetID string,
-	a1Range string,
+	a1Range models.A1Range,
 	values [][]interface{},
 ) (InsertRowsResult, error) {
 	return w.insertRows(ctx, spreadsheetID, a1Range, values, appendModeOverwrite)
@@ -104,17 +93,17 @@ func (w *Wrapper) OverwriteRows(
 func (w *Wrapper) insertRows(
 	ctx context.Context,
 	spreadsheetID string,
-	a1Range string,
+	a1Range models.A1Range,
 	values [][]interface{},
 	mode appendMode,
 ) (InsertRowsResult, error) {
 	valueRange := &sheets.ValueRange{
 		MajorDimension: majorDimensionRows,
-		Range:          a1Range,
+		Range:          a1Range.Original,
 		Values:         values,
 	}
 
-	req := w.service.Spreadsheets.Values.Append(spreadsheetID, a1Range, valueRange).
+	req := w.service.Spreadsheets.Values.Append(spreadsheetID, a1Range.Original, valueRange).
 		InsertDataOption(string(mode)).
 		IncludeValuesInResponse(true).
 		ResponseValueRenderOption(responseValueRenderFormatted).
@@ -127,7 +116,7 @@ func (w *Wrapper) insertRows(
 	}
 
 	return InsertRowsResult{
-		UpdatedRange:   NewA1Range(resp.Updates.UpdatedRange),
+		UpdatedRange:   models.NewA1RangeFromString(resp.Updates.UpdatedRange),
 		UpdatedRows:    resp.Updates.UpdatedRows,
 		UpdatedColumns: resp.Updates.UpdatedColumns,
 		UpdatedCells:   resp.Updates.UpdatedCells,
@@ -138,16 +127,16 @@ func (w *Wrapper) insertRows(
 func (w *Wrapper) UpdateRows(
 	ctx context.Context,
 	spreadsheetID string,
-	a1Range string,
+	a1Range models.A1Range,
 	values [][]interface{},
 ) (UpdateRowsResult, error) {
 	valueRange := &sheets.ValueRange{
 		MajorDimension: majorDimensionRows,
-		Range:          a1Range,
+		Range:          a1Range.Original,
 		Values:         values,
 	}
 
-	req := w.service.Spreadsheets.Values.Update(spreadsheetID, a1Range, valueRange).
+	req := w.service.Spreadsheets.Values.Update(spreadsheetID, a1Range.Original, valueRange).
 		IncludeValuesInResponse(true).
 		ResponseValueRenderOption(responseValueRenderFormatted).
 		ValueInputOption(valueInputUserEntered).
@@ -159,7 +148,7 @@ func (w *Wrapper) UpdateRows(
 	}
 
 	return UpdateRowsResult{
-		UpdatedRange:   NewA1Range(resp.UpdatedRange),
+		UpdatedRange:   models.NewA1RangeFromString(resp.UpdatedRange),
 		UpdatedRows:    resp.UpdatedRows,
 		UpdatedColumns: resp.UpdatedColumns,
 		UpdatedCells:   resp.UpdatedCells,
@@ -176,7 +165,7 @@ func (w *Wrapper) BatchUpdateRows(
 	for i := range requests {
 		valueRanges[i] = &sheets.ValueRange{
 			MajorDimension: majorDimensionRows,
-			Range:          requests[i].A1Range,
+			Range:          requests[i].A1Range.Original,
 			Values:         requests[i].Values,
 		}
 	}
@@ -198,7 +187,7 @@ func (w *Wrapper) BatchUpdateRows(
 	results := make(BatchUpdateRowsResult, len(requests))
 	for i := range resp.Responses {
 		results[i] = UpdateRowsResult{
-			UpdatedRange:   NewA1Range(resp.Responses[i].UpdatedRange),
+			UpdatedRange:   models.NewA1RangeFromString(resp.Responses[i].UpdatedRange),
 			UpdatedRows:    resp.Responses[i].UpdatedRows,
 			UpdatedColumns: resp.Responses[i].UpdatedColumns,
 			UpdatedCells:   resp.Responses[i].UpdatedCells,
@@ -277,9 +266,20 @@ func (w *Wrapper) execQueryRows(
 	return result, nil
 }
 
-func (w *Wrapper) Clear(ctx context.Context, spreadsheetID string, ranges []string) ([]string, error) {
-	req := w.service.Spreadsheets.Values.BatchClear(spreadsheetID, &sheets.BatchClearValuesRequest{Ranges: ranges}).
+func (w *Wrapper) Clear(
+	ctx context.Context,
+	spreadsheetID string,
+	ranges []models.A1Range,
+) ([]string, error) {
+	strRanges := make([]string, 0, len(ranges))
+	for _, rng := range ranges {
+		strRanges = append(strRanges, rng.Original)
+	}
+
+	req := w.service.Spreadsheets.Values.
+		BatchClear(spreadsheetID, &sheets.BatchClearValuesRequest{Ranges: strRanges}).
 		Context(ctx)
+
 	resp, err := req.Do()
 	if err != nil {
 		return nil, err

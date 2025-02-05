@@ -6,9 +6,41 @@ import (
 )
 
 func TestEscapeValue(t *testing.T) {
-	assert.Equal(t, "'blah", EscapeValue("blah"))
-	assert.Equal(t, 1, EscapeValue(1))
-	assert.Equal(t, true, EscapeValue(true))
+	t.Run("not in cols with formula", func(t *testing.T) {
+		value, err := EscapeValue("A", 123, NewSet([]string{"B"}))
+		assert.Nil(t, err)
+		assert.Equal(t, 123, value)
+
+		value, err = EscapeValue("A", "123", NewSet([]string{"B"}))
+		assert.Nil(t, err)
+		assert.Equal(t, "'123", value)
+	})
+
+	t.Run("in cols with formula, but not string", func(t *testing.T) {
+		value, err := EscapeValue("A", 123, NewSet([]string{"A"}))
+		assert.NotNil(t, err)
+		assert.Equal(t, nil, value)
+	})
+
+	t.Run("in cols with formula, but string", func(t *testing.T) {
+		value, err := EscapeValue("A", "123", NewSet([]string{"A"}))
+		assert.Nil(t, err)
+		assert.Equal(t, "123", value)
+	})
+
+	t.Run("different data types, not in the cols with formula", func(t *testing.T) {
+		value, err := EscapeValue("A", "blah", NewSet([]string{}))
+		assert.Equal(t, "'blah", value)
+		assert.NoError(t, err)
+
+		value, err = EscapeValue("A", 1, NewSet([]string{}))
+		assert.Equal(t, 1, value)
+		assert.NoError(t, err)
+
+		value, err = EscapeValue("A", true, NewSet([]string{}))
+		assert.Equal(t, true, value)
+		assert.NoError(t, err)
+	})
 }
 
 func TestCheckIEEE754SafeInteger(t *testing.T) {

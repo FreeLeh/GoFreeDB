@@ -1,16 +1,16 @@
-package store
+package google
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/FreeLeh/GoFreeDB/internal/common"
 	"time"
 
-	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
+	"github.com/FreeLeh/GoFreeDB/internal/common"
+	"github.com/FreeLeh/GoFreeDB/internal/models"
 )
 
-// GoogleSheetRowStoreConfig defines a list of configurations that can be used to customise how the GoogleSheetRowStore works.
+// GoogleSheetRowStoreConfig defines a list of configurations that can be used to customise how the SheetRowStore works.
 type GoogleSheetRowStoreConfig struct {
 	// Columns defines the list of column names.
 	// Note that the column ordering matters.
@@ -33,12 +33,12 @@ func (c GoogleSheetRowStoreConfig) validate() error {
 	return nil
 }
 
-// GoogleSheetRowStore encapsulates row store functionality on top of a Google Sheet.
-type GoogleSheetRowStore struct {
+// SheetRowStore encapsulates row store functionality on top of a Google Sheet.
+type SheetRowStore struct {
 	wrapper         sheetsWrapper
 	spreadsheetID   string
 	sheetName       string
-	colsMapping     common.ColsMapping
+	colsMapping     models.ColsMapping
 	colsWithFormula *common.Set[string]
 	config          GoogleSheetRowStoreConfig
 }
@@ -63,9 +63,9 @@ type GoogleSheetRowStore struct {
 //		}
 //
 // Please note that calling Select() does not execute the query yet.
-// Call GoogleSheetSelectStmt.Exec to actually execute the query.
-func (s *GoogleSheetRowStore) Select(output interface{}, columns ...string) *GoogleSheetSelectStmt {
-	return newGoogleSheetSelectStmt(s, output, columns)
+// Call SheetSelectStmt.Exec to actually execute the query.
+func (s *SheetRowStore) Select(output interface{}, columns ...string) *SheetSelectStmt {
+	return newSheetSelectStmt(s, output, columns)
 }
 
 // Insert specifies the rows to be inserted into the Google Sheet.
@@ -75,11 +75,11 @@ func (s *GoogleSheetRowStore) Select(output interface{}, columns ...string) *Goo
 //
 // By default, the column name will be following the struct field name (case-sensitive).
 // If you want to map the struct field name into another name, you can add a "db" struct tag
-// (see GoogleSheetRowStore.Select docs for more details).
+// (see SheetRowStore.Select docs for more details).
 //
 // Please note that calling Insert() does not execute the insertion yet.
-// Call GoogleSheetInsertStmt.Exec() to actually execute the insertion.
-func (s *GoogleSheetRowStore) Insert(rows ...interface{}) *GoogleSheetInsertStmt {
+// Call SheetInsertStmt.Exec() to actually execute the insertion.
+func (s *SheetRowStore) Insert(rows ...interface{}) *SheetInsertStmt {
 	return newGoogleSheetInsertStmt(s, rows)
 }
 
@@ -87,40 +87,41 @@ func (s *GoogleSheetRowStore) Insert(rows ...interface{}) *GoogleSheetInsertStmt
 //
 // The "colToValue" parameter specifies what value should be updated for which column.
 // Each value in the map[string]interface{} is going to be JSON marshalled.
-// If "colToValue" is empty, an error will be returned when GoogleSheetUpdateStmt.Exec() is called.
-func (s *GoogleSheetRowStore) Update(colToValue map[string]interface{}) *GoogleSheetUpdateStmt {
-	return newGoogleSheetUpdateStmt(s, colToValue)
+// If "colToValue" is empty, an error will be returned when SheetUpdateStmt.Exec() is called.
+func (s *SheetRowStore) Update(colToValue map[string]interface{}) *SheetUpdateStmt {
+	return newSheetUpdateStmt(s, colToValue)
 }
 
 // Delete prepares rows deletion operation.
 //
 // Please note that calling Delete() does not execute the deletion yet.
-// Call GoogleSheetDeleteStmt.Exec() to actually execute the deletion.
-func (s *GoogleSheetRowStore) Delete() *GoogleSheetDeleteStmt {
-	return newGoogleSheetDeleteStmt(s)
+// Call SheetDeleteStmt.Exec() to actually execute the deletion.
+func (s *SheetRowStore) Delete() *SheetDeleteStmt {
+	return newSheetDeleteStmt(s)
 }
 
 // Count prepares rows counting operation.
 //
 // Please note that calling Count() does not execute the query yet.
-// Call GoogleSheetCountStmt.Exec() to actually execute the query.
-func (s *GoogleSheetRowStore) Count() *GoogleSheetCountStmt {
-	return newGoogleSheetCountStmt(s)
+// Call SheetCountStmt.Exec() to actually execute the query.
+func (s *SheetRowStore) Count() *SheetCountStmt {
+	return newSheetCountStmt(s)
 }
 
 // Close cleans up all held resources if any.
-func (s *GoogleSheetRowStore) Close(_ context.Context) error {
+func (s *SheetRowStore) Close(_ context.Context) error {
 	return nil
 }
 
-func (s *GoogleSheetRowStore) ensureHeaders() error {
+func (s *SheetRowStore) ensureHeaders() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
+	a1Range := models.NewA1Range(s.sheetName, defaultRowHeaderRange)
 	if _, err := s.wrapper.Clear(
 		ctx,
 		s.spreadsheetID,
-		[]string{common.GetA1Range(s.sheetName, defaultRowHeaderRange)},
+		[]models.A1Range{a1Range},
 	); err != nil {
 		return err
 	}
@@ -133,7 +134,7 @@ func (s *GoogleSheetRowStore) ensureHeaders() error {
 	if _, err := s.wrapper.UpdateRows(
 		ctx,
 		s.spreadsheetID,
-		common.GetA1Range(s.sheetName, defaultRowHeaderRange),
+		models.NewA1Range(s.sheetName, defaultRowHeaderRange),
 		[][]interface{}{cols},
 	); err != nil {
 		return err
@@ -144,26 +145,26 @@ func (s *GoogleSheetRowStore) ensureHeaders() error {
 // NewGoogleSheetRowStore creates an instance of the row based store with the given configuration.
 // It will also try to create the sheet, in case it does not exist yet.
 func NewGoogleSheetRowStore(
-	auth sheets.AuthClient,
+	auth AuthClient,
 	spreadsheetID string,
 	sheetName string,
 	config GoogleSheetRowStoreConfig,
-) *GoogleSheetRowStore {
+) *SheetRowStore {
 	if err := config.validate(); err != nil {
 		panic(err)
 	}
 
-	wrapper, err := sheets.NewWrapper(auth)
+	wrapper, err := NewWrapper(auth)
 	if err != nil {
 		panic(fmt.Errorf("error creating sheets wrapper: %w", err))
 	}
 
-	config = injectTimestampCol(config)
-	store := &GoogleSheetRowStore{
+	config = injectRIDCol(config)
+	store := &SheetRowStore{
 		wrapper:         wrapper,
 		spreadsheetID:   spreadsheetID,
 		sheetName:       sheetName,
-		colsMapping:     common.GenerateColumnMapping(config.Columns),
+		colsMapping:     models.GenerateColumnMapping(config.Columns),
 		colsWithFormula: common.NewSet(config.ColumnsWithFormula),
 		config:          config,
 	}
@@ -178,7 +179,7 @@ func NewGoogleSheetRowStore(
 // The additional rowIdxCol column is needed to differentiate which row is truly empty and which one is not.
 // Currently, we use this for detecting which rows are really empty for UPDATE without WHERE clause.
 // Otherwise, it will always update all rows (instead of the non-empty rows only).
-func injectTimestampCol(config GoogleSheetRowStoreConfig) GoogleSheetRowStoreConfig {
+func injectRIDCol(config GoogleSheetRowStoreConfig) GoogleSheetRowStoreConfig {
 	newCols := make([]string, 0, len(config.Columns)+1)
 	newCols = append(newCols, rowIdxCol)
 	newCols = append(newCols, config.Columns...)

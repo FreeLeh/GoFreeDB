@@ -1,15 +1,15 @@
-package store
+package google
 
 import (
 	"context"
 	"fmt"
-	"github.com/FreeLeh/GoFreeDB/internal/common"
-	"github.com/FreeLeh/GoFreeDB/internal/models"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/FreeLeh/GoFreeDB/google/auth"
+	"github.com/FreeLeh/GoFreeDB/internal/common"
+	"github.com/FreeLeh/GoFreeDB/internal/models"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -77,7 +77,6 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 	assert.Nil(t, err)
 
 	expected := []testPerson{
-		{"name2", 11, "2000-01-01"},
 		{"name3", 9007199254740992, "2001-01-01"},
 	}
 
@@ -86,6 +85,7 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 		Where("name = ? OR name = ?", "name2", "name3").
 		OrderBy([]models.ColumnOrderBy{{"name", models.OrderByAsc}}).
 		Limit(2).
+		Offset(1).
 		Exec(context.Background())
 	assert.Nil(t, err)
 	assert.Equal(t, expected, out)
@@ -100,6 +100,30 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 	time.Sleep(time.Second)
 	err = db.Delete().Where("name = ?", "name4").Exec(context.Background())
 	assert.Nil(t, err)
+
+	time.Sleep(time.Second)
+	err = db.Insert(
+		testPerson{"name100", 10, "1999-01-01"},
+		testPerson{"name200", 11, "2000-01-01"},
+		testPerson{"name300", 12, "2001-01-01"},
+	).Exec(context.Background())
+	assert.Nil(t, err)
+
+	var out2 []testPerson
+	expected = []testPerson{
+		{"name100", 10, "1999-01-01"},
+		{"name2", 11, "2000-01-01"},
+		{"name200", 11, "2000-01-01"},
+		{"name3", 9007199254740992, "2001-01-01"},
+		{"name300", 12, "2001-01-01"},
+	}
+
+	time.Sleep(time.Second)
+	err = db.Select(&out2, "name", "age", "dob").
+		OrderBy([]models.ColumnOrderBy{{"name", models.OrderByAsc}}).
+		Exec(context.Background())
+	assert.Nil(t, err)
+	assert.Equal(t, expected, out2)
 }
 
 func TestGoogleSheetRowStore_Integration_EdgeCases(t *testing.T) {
@@ -207,7 +231,7 @@ func TestGoogleSheetRowStore_Formula(t *testing.T) {
 }
 
 func TestInjectTimestampCol(t *testing.T) {
-	result := injectTimestampCol(GoogleSheetRowStoreConfig{Columns: []string{"col1", "col2"}})
+	result := injectRIDCol(GoogleSheetRowStoreConfig{Columns: []string{"col1", "col2"}})
 	assert.Equal(t, GoogleSheetRowStoreConfig{Columns: []string{rowIdxCol, "col1", "col2"}}, result)
 }
 

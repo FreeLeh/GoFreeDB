@@ -1,25 +1,25 @@
 package freedb
 
 import (
-	"github.com/FreeLeh/GoFreeDB/internal/google/store"
+	"github.com/FreeLeh/GoFreeDB/internal/google"
 	"github.com/FreeLeh/GoFreeDB/internal/models"
 )
 
 type (
-	GoogleSheetRowStore       = store.GoogleSheetRowStore
-	GoogleSheetRowStoreConfig = store.GoogleSheetRowStoreConfig
+	GoogleSheetRowStore       = google.SheetRowStore
+	GoogleSheetRowStoreConfig = google.GoogleSheetRowStoreConfig
 
-	GoogleSheetSelectStmt = store.GoogleSheetSelectStmt
-	GoogleSheetInsertStmt = store.GoogleSheetInsertStmt
-	GoogleSheetUpdateStmt = store.GoogleSheetUpdateStmt
-	GoogleSheetDeleteStmt = store.GoogleSheetDeleteStmt
+	GoogleSheetSelectStmt = google.SheetSelectStmt
+	GoogleSheetInsertStmt = google.SheetInsertStmt
+	GoogleSheetUpdateStmt = google.SheetUpdateStmt
+	GoogleSheetDeleteStmt = google.SheetDeleteStmt
 
 	ColumnOrderBy = models.ColumnOrderBy
 	OrderBy       = models.OrderBy
 )
 
 var (
-	NewGoogleSheetRowStore = store.NewGoogleSheetRowStore
+	NewGoogleSheetRowStore = google.NewGoogleSheetRowStore
 
 	OrderByAsc  = models.OrderByAsc
 	OrderByDesc = models.OrderByDesc

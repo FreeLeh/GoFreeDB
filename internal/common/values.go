@@ -5,16 +5,28 @@ import (
 	"fmt"
 )
 
-func EscapeValue(value interface{}) interface{} {
-	// This is to ensure that string value will always be a string representation in Google Sheets.
-	// Without this, "1" may be converted automatically into an integer.
-	// "2020-01-01" may be converted into a date format.
-	switch value.(type) {
-	case string:
-		return fmt.Sprintf("'%s", value)
-	default:
-		return value
+func EscapeValue(
+	col string,
+	value any,
+	colsWithFormula *Set[string],
+) (any, error) {
+	if !colsWithFormula.Contains(col) {
+		// This is to ensure that string value will always be a string representation in Google Sheets.
+		// Without this, "1" may be converted automatically into an integer.
+		// "2020-01-01" may be converted into a date format.
+		switch value.(type) {
+		case string:
+			return fmt.Sprintf("'%s", value), nil
+		default:
+			return value, nil
+		}
 	}
+
+	_, ok := value.(string)
+	if !ok {
+		return nil, fmt.Errorf("value of column %s is not a string, but expected to contain formula", col)
+	}
+	return value, nil
 }
 
 func CheckIEEE754SafeInteger(value interface{}) error {
@@ -37,4 +49,8 @@ func isIEEE754SafeInteger(value int64) error {
 		return nil
 	}
 	return errors.New("integer provided is not within the IEEE 754 safe integer boundary of [-(2^53), 2^53], the integer may have a precision lost")
+}
+
+func SingleQuote(s string) string {
+	return fmt.Sprintf("'%s'", s)
 }

@@ -1,10 +1,9 @@
-package store
+package google
 
 import (
 	"context"
 	"fmt"
 	"github.com/FreeLeh/GoFreeDB/internal/codec"
-	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
 	"github.com/FreeLeh/GoFreeDB/internal/models"
 )
 
@@ -13,22 +12,22 @@ type googleSheetKVStoreV2Row struct {
 	Value string `db:"value"`
 }
 
-// GoogleSheetKVStoreV2Config defines a list of configurations that can be used to customise
-// how the GoogleSheetKVStoreV2 works.
-type GoogleSheetKVStoreV2Config struct {
+// SheetKVStoreV2Config defines a list of configurations that can be used to customise
+// how the SheetKVStoreV2 works.
+type SheetKVStoreV2Config struct {
 	Mode  models.KVMode
 	codec Codec
 }
 
-// GoogleSheetKVStoreV2 implements a key-value store using the row store abstraction.
-type GoogleSheetKVStoreV2 struct {
-	rowStore *GoogleSheetRowStore
+// SheetKVStoreV2 implements a key-value store using the row store abstraction.
+type SheetKVStoreV2 struct {
+	rowStore *SheetRowStore
 	mode     models.KVMode
 	codec    Codec
 }
 
 // Get retrieves the value associated with the given key.
-func (s *GoogleSheetKVStoreV2) Get(ctx context.Context, key string) ([]byte, error) {
+func (s *SheetKVStoreV2) Get(ctx context.Context, key string) ([]byte, error) {
 	var rows []googleSheetKVStoreV2Row
 	var err error
 
@@ -61,7 +60,7 @@ func (s *GoogleSheetKVStoreV2) Get(ctx context.Context, key string) ([]byte, err
 }
 
 // Set inserts or updates the key-value pair in the store.
-func (s *GoogleSheetKVStoreV2) Set(ctx context.Context, key string, value []byte) error {
+func (s *SheetKVStoreV2) Set(ctx context.Context, key string, value []byte) error {
 	encoded, err := s.codec.Encode(value)
 	if err != nil {
 		return err
@@ -75,7 +74,7 @@ func (s *GoogleSheetKVStoreV2) Set(ctx context.Context, key string, value []byte
 }
 
 // Delete removes the key from the store.
-func (s *GoogleSheetKVStoreV2) Delete(ctx context.Context, key string) error {
+func (s *SheetKVStoreV2) Delete(ctx context.Context, key string) error {
 	if s.mode == models.KVModeDefault {
 		return s.rowStore.Delete().
 			Where("key = ?", key).
@@ -89,18 +88,18 @@ func (s *GoogleSheetKVStoreV2) Delete(ctx context.Context, key string) error {
 }
 
 // Close cleans up resources used by the store.
-func (s *GoogleSheetKVStoreV2) Close(ctx context.Context) error {
+func (s *SheetKVStoreV2) Close(ctx context.Context) error {
 	return s.rowStore.Close(ctx)
 }
 
 // NewGoogleSheetKVStoreV2 creates a new instance of the key-value store using row store.
 // You cannot use this V2 store with the V1 store as the sheet format is different.
 func NewGoogleSheetKVStoreV2(
-	auth sheets.AuthClient,
+	auth AuthClient,
 	spreadsheetID string,
 	sheetName string,
-	config GoogleSheetKVStoreV2Config,
-) *GoogleSheetKVStoreV2 {
+	config SheetKVStoreV2Config,
+) *SheetKVStoreV2 {
 	rowStore := NewGoogleSheetRowStore(
 		auth,
 		spreadsheetID,
@@ -111,14 +110,14 @@ func NewGoogleSheetKVStoreV2(
 	)
 
 	config = applyGoogleSheetKVStoreV2Config(config)
-	return &GoogleSheetKVStoreV2{
+	return &SheetKVStoreV2{
 		rowStore: rowStore,
 		mode:     config.Mode,
 		codec:    config.codec,
 	}
 }
 
-func applyGoogleSheetKVStoreV2Config(config GoogleSheetKVStoreV2Config) GoogleSheetKVStoreV2Config {
+func applyGoogleSheetKVStoreV2Config(config SheetKVStoreV2Config) SheetKVStoreV2Config {
 	config.codec = codec.NewBasic()
 	return config
 }
