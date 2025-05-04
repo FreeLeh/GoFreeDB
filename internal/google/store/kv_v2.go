@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+
 	"github.com/FreeLeh/GoFreeDB/internal/codec"
 	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
 	"github.com/FreeLeh/GoFreeDB/internal/models"
@@ -65,6 +66,14 @@ func (s *GoogleSheetKVStoreV2) Set(ctx context.Context, key string, value []byte
 	encoded, err := s.codec.Encode(value)
 	if err != nil {
 		return err
+	}
+
+	if s.mode == models.KVModeDefault {
+		if err := s.rowStore.Delete().
+			Where("key = ?", key).
+			Exec(ctx); err != nil {
+			return err
+		}
 	}
 
 	row := googleSheetKVStoreV2Row{
