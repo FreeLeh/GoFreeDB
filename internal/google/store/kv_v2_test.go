@@ -3,10 +3,11 @@ package store
 import (
 	"context"
 	"fmt"
-	"github.com/FreeLeh/GoFreeDB/internal/common"
-	"github.com/FreeLeh/GoFreeDB/internal/models"
 	"testing"
 	"time"
+
+	"github.com/FreeLeh/GoFreeDB/internal/common"
+	"github.com/FreeLeh/GoFreeDB/internal/models"
 
 	"github.com/FreeLeh/GoFreeDB/google/auth"
 	"github.com/stretchr/testify/assert"
@@ -100,6 +101,11 @@ func TestNewGoogleSheetKVStoreV2_Default_Integration(t *testing.T) {
 
 	time.Sleep(time.Second)
 	err = kv.Set(context.Background(), "k1", []byte("test2"))
+	assert.Nil(t, err)
+
+	time.Sleep(time.Second)
+	value, err = kv.Get(context.Background(), "k1")
+	assert.Equal(t, []byte("test2"), value)
 	assert.Nil(t, err)
 
 	time.Sleep(time.Second)
