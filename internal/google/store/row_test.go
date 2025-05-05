@@ -3,11 +3,12 @@ package store
 import (
 	"context"
 	"fmt"
-	"github.com/FreeLeh/GoFreeDB/internal/common"
-	"github.com/FreeLeh/GoFreeDB/internal/models"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/FreeLeh/GoFreeDB/internal/common"
+	"github.com/FreeLeh/GoFreeDB/internal/models"
 
 	"github.com/FreeLeh/GoFreeDB/google/auth"
 	"github.com/stretchr/testify/assert"
@@ -42,6 +43,11 @@ func TestGoogleSheetRowStore_Integration(t *testing.T) {
 		deleteSheet(t, db.wrapper, spreadsheetID, []string{db.sheetName})
 		_ = db.Close(context.Background())
 	}()
+
+	time.Sleep(time.Second)
+	res, err := db.Count().Exec(context.Background())
+	assert.Equal(t, uint64(0), res)
+	assert.Nil(t, err)
 
 	var out []testPerson
 
