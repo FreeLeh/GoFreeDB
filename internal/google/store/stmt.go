@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/FreeLeh/GoFreeDB/internal/common"
-	"github.com/FreeLeh/GoFreeDB/internal/models"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/FreeLeh/GoFreeDB/internal/common"
+	"github.com/FreeLeh/GoFreeDB/internal/models"
 
 	"github.com/FreeLeh/GoFreeDB/internal/google/sheets"
 )
@@ -604,8 +605,12 @@ func (s *GoogleSheetCountStmt) Exec(ctx context.Context) (uint64, error) {
 		return 0, err
 	}
 
+	// When COUNT() returns 0, somehow it returns empty row slice.
+	if len(result.Rows) < 1 || len(result.Rows[0]) < 1 {
+		return 0, nil
+	}
 	if len(result.Rows) != 1 || len(result.Rows[0]) != 1 {
-		return 0, errors.New("")
+		return 0, errors.New("unexpected number of rows or columns")
 	}
 
 	count := result.Rows[0][0].(float64)
